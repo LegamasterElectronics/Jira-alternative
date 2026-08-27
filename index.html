@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Ticket Tracker</title>
+<style>
+  :root {
+    --bg: #F3F4F7;
+    --surface: #FFFFFF;
+    --surface-2: #FAFAFC;
+    --border: #E1E3E9;
+    --ink: #1B2130;
+    --ink-muted: #6B7280;
+    --ink-faint: #9CA3AF;
+    --accent: #3A4CD1;
+    --accent-ink: #FFFFFF;
+
+    --type-bug: #C0392B;
+    --type-bug-bg: #FBEAE8;
+    --type-fw: #2C4CBE;
+    --type-fw-bg: #E9EDFB;
+
+    --cat-hardware: #8A5A12;
+    --cat-hardware-bg: #F6ECDA;
+    --cat-firmware: #0E7C72;
+    --cat-firmware-bg: #E1F3F1;
+    --cat-software: #6B3FC2;
+    --cat-software-bg: #EFE7FB;
+    --cat-interop: #B0206B;
+    --cat-interop-bg: #FBE5EF;
+
+    --pri-low: #6B7280;
+    --pri-low-bg: #EEF0F2;
+    --pri-mid: #B5730B;
+    --pri-mid-bg: #FBF0DC;
+    --pri-high: #C0392B;
+    --pri-high-bg: #FBEAE8;
+
+    --st-open: #6B7280;
+    --st-progress: #2C4CBE;
+    --st-review: #B5730B;
+    --st-blocked: #C0392B;
+    --st-done: #1E8A4C;
+
+    --rel-planned: #6B7280;
+    --rel-progress: #2C4CBE;
+    --rel-released: #1E8A4C;
+
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(20,24,38,0.04), 0 1px 8px rgba(20,24,38,0.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-variant-numeric: tabular-nums; font-family: "SF Mono", "Roboto Mono", Consolas, monospace; }
+
+  .layout { display: flex; min-height: 100vh; align-items: flex-start; }
+
+  .sidebar {
+    width: 236px; flex: none; padding: 20px 12px; position: sticky; top: 0;
+    height: 100vh; overflow-y: auto; border-right: 1px solid var(--border);
+  }
+  .sidebar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted); padding: 0 10px 10px; }
+  .series-item {
+    display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 600; cursor: pointer; color: var(--ink); margin-bottom: 2px;
+  }
+  .series-item:hover { background: var(--surface-2); }
+  .series-item.active { background: var(--ink); color: #fff; }
+  .series-item .scount {
+    margin-left: auto; font-size: 11px; font-weight: 700; color: var(--ink-muted);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 1px 7px;
+  }
+  .series-item.active .scount { background: rgba(255,255,255,0.15); border-color: transparent; color: #fff; }
+  .overdue-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--type-bug); vertical-align: middle; margin-left: 2px; }
+  .sidebar-foot { padding: 14px 10px 0; margin-top: 10px; border-top: 1px solid var(--border); }
+  .current-user-line { font-size: 11.5px; color: var(--ink-muted); text-align: center; margin-bottom: 8px; }
+  .current-user-line strong { color: var(--ink); }
+  .switch-link { color: var(--accent); cursor: pointer; font-weight: 600; font-size: 11.5px; margin-left: 4px; }
+  .login-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+  .commenting-as { font-size: 12.5px; color: var(--ink-muted); }
+  .sidebar-foot button { width: 100%; justify-content: center; display: flex; }
+
+  .app { flex: 1; max-width: 1560px; margin: 0 auto; padding: 20px 24px 64px; min-width: 0; }
+
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding: 4px 0 4px; flex-wrap: wrap;
+  }
+  header.top h1 { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  header.top .sub { font-size: 12.5px; color: var(--ink-muted); margin-top: 2px; }
+  .top-actions { display: flex; gap: 8px; align-items: center; }
+
+  button {
+    font-family: inherit; font-size: 13.5px; font-weight: 600;
+    border-radius: 8px; border: 1px solid var(--border);
+    padding: 8px 14px; cursor: pointer; background: var(--surface);
+    color: var(--ink); transition: background 0.12s, border-color 0.12s;
+  }
+  button:hover { background: var(--surface-2); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.primary:hover { background: #3140AD; }
+  button.ghost { border-color: transparent; background: transparent; }
+  button.ghost:hover { background: var(--surface-2); }
+  button.danger { color: var(--type-bug); }
+  button.small { padding: 4px 9px; font-size: 12px; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .card:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+
+  .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .view-toggle button { border: none; border-radius: 0; padding: 7px 12px; }
+  .view-toggle button.active { background: var(--ink); color: #fff; }
+
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px; margin: 14px 0 18px;
+  }
+  .filters input[type="text"], .filters select {
+    font-family: inherit; font-size: 13px; padding: 7px 10px;
+    border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  }
+  .filters input[type="text"] { min-width: 180px; flex: 1 1 180px; }
+  .filters .clear { font-size: 12.5px; color: var(--ink-muted); cursor: pointer; }
+
+  .badge {
+    display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+    padding: 2px 7px; border-radius: 5px; white-space: nowrap; letter-spacing: 0.01em;
+  }
+  .badge.type-bug { color: var(--type-bug); background: var(--type-bug-bg); }
+  .badge.type-fw { color: var(--type-fw); background: var(--type-fw-bg); }
+  .badge.cat-hardware { color: var(--cat-hardware); background: var(--cat-hardware-bg); }
+  .badge.cat-firmware { color: var(--cat-firmware); background: var(--cat-firmware-bg); }
+  .badge.cat-software { color: var(--cat-software); background: var(--cat-software-bg); }
+  .badge.cat-interop { color: var(--cat-interop); background: var(--cat-interop-bg); }
+  .badge.pri-low { color: var(--pri-low); background: var(--pri-low-bg); }
+  .badge.pri-medium { color: var(--pri-mid); background: var(--pri-mid-bg); }
+  .badge.pri-high { color: var(--pri-high); background: var(--pri-high-bg); }
+
+  .ticket-key { font-size: 11.5px; color: var(--ink-faint); font-weight: 700; }
+  .release-tag { font-size: 11px; color: var(--accent); font-weight: 700; margin-top: 6px; }
+
+  .board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+  .column {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 12px; min-width: 240px; flex: 1 1 240px; max-width: 280px;
+    display: flex; flex-direction: column; max-height: calc(100vh - 260px);
+  }
+  .column.drag-over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+  .column-head {
+    display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px;
+    font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .column-head .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .column-head .count {
+    margin-left: auto; font-weight: 600; color: var(--ink-muted);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 1px 7px; font-size: 11px;
+  }
+  .column-body { padding: 4px 10px 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .column-empty { font-size: 12px; color: var(--ink-faint); text-align: center; padding: 18px 6px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
+    padding: 10px 11px; cursor: grab; box-shadow: var(--shadow);
+  }
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: 0.45; }
+  .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .card-title { font-size: 13.5px; font-weight: 600; line-height: 1.35; margin: 0 0 8px; }
+  .card-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--ink-muted); margin-top: 8px; }
+  .avatar {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex: none;
+  }
+  .unassigned { color: var(--ink-faint); font-style: italic; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-muted); font-weight: 700; padding: 10px 12px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--surface-2); }
+  td.title-cell { font-weight: 600; max-width: 240px; }
+  select.status-select { font-size: 11.5px; font-weight: 600; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border); }
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--ink-muted); background: var(--surface);
+    border: 1px dashed var(--border); border-radius: var(--radius);
+  }
+  .empty-state .big { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+
+  /* Releases */
+  .releases-wrap { display: flex; flex-direction: column; gap: 12px; }
+  .release-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .release-card.overdue { border-color: var(--type-bug); border-width: 1.5px; }
+  .overdue-badge { font-size: 11px; font-weight: 700; color: var(--type-bug); background: var(--type-bug-bg); padding: 2px 8px; border-radius: 20px; }
+  .release-download { margin-top: 8px; }
+  .release-download a {
+    font-size: 12.5px; font-weight: 700; color: var(--accent); text-decoration: none;
+    background: var(--surface-2); border: 1px solid var(--border); padding: 5px 10px; border-radius: 7px; display: inline-block;
+  }
+  .release-download a:hover { background: var(--border); }
+  .release-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .release-version { font-size: 15px; font-weight: 800; font-family: "SF Mono", "Roboto Mono", Consolas, monospace; }
+  .release-status-pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; color: #fff; }
+  .release-date { font-size: 12.5px; color: var(--ink-muted); }
+  .release-progress { margin-left: auto; font-size: 12px; color: var(--ink-muted); font-weight: 600; }
+  .release-actions { display: flex; gap: 4px; }
+  .release-notes { font-size: 12.5px; color: var(--ink-muted); margin-top: 8px; }
+  .release-tickets { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .release-ticket-row {
+    display: flex; align-items: center; gap: 9px; font-size: 12.5px; padding: 7px 9px;
+    background: var(--surface-2); border-radius: 7px; cursor: pointer;
+  }
+  .release-ticket-row:hover { background: var(--border); }
+  .release-ticket-row .rt-title { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .release-empty { font-size: 12px; color: var(--ink-faint); padding: 4px 0 0; }
+  .backlog-note { font-size: 12.5px; color: var(--ink-muted); padding: 4px 2px 0; }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(20,24,38,0.45); display: flex;
+    align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 50; overflow-y: auto;
+  }
+  .modal {
+    background: var(--surface); border-radius: 14px; width: 100%; max-width: 600px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25); padding: 22px 24px 24px;
+  }
+  .modal.narrow { max-width: 440px; }
+  .modal.wide { max-width: 960px; }
+  .modal-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+  .modal-head h2 { font-size: 16px; margin: 0; }
+  .modal-head-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .status-pill-inline { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; color: #fff; }
+  .modal .field { margin-top: 14px; }
+  .modal label { display: block; font-size: 12px; font-weight: 700; color: var(--ink-muted); margin-bottom: 5px; }
+  .modal input[type="text"], .modal input[type="url"], .modal input[type="date"], .modal input[type="password"], .modal textarea, .modal select {
+    width: 100%; font-family: inherit; font-size: 13.5px; padding: 9px 10px;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  }
+  .modal textarea { min-height: 70px; resize: vertical; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .radio-group { display: flex; gap: 8px; }
+  .radio-opt {
+    flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px;
+    font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; background: var(--surface-2);
+  }
+  .radio-opt.sel-bug.selected { background: var(--type-bug-bg); border-color: var(--type-bug); color: var(--type-bug); }
+  .radio-opt.sel-fw.selected { background: var(--type-fw-bg); border-color: var(--type-fw); color: var(--type-fw); }
+  .radio-opt input { display: none; }
+
+  .attach-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .attach-row { display: flex; gap: 6px; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px; }
+  .attach-row a { font-size: 12.5px; color: var(--accent); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attach-row .x { margin-left: auto; cursor: pointer; color: var(--ink-faint); font-size: 15px; line-height: 1; padding: 0 2px; }
+  .attach-add { display: flex; gap: 6px; }
+  .attach-add input { flex: 1; font-size: 12.5px; padding: 7px 9px; }
+  .attach-add button { padding: 7px 10px; font-size: 12px; }
+
+  .modal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .meta-note { font-size: 11.5px; color: var(--ink-faint); margin-top: 3px; }
+
+  /* Trello-style two-column body: ticket fields left, comments & activity right */
+  .modal-body { display: flex; gap: 26px; align-items: flex-start; margin-top: 12px; }
+  .modal-left { flex: 1 1 56%; min-width: 0; }
+  .modal-right { flex: 1 1 44%; min-width: 0; border-left: 1px solid var(--border); padding-left: 22px; }
+  .comments-header { font-size: 13.5px; font-weight: 800; margin-bottom: 12px; }
+  .comment-input-block { margin-bottom: 18px; }
+  .comment-input-block .name-row { margin-bottom: 6px; }
+  .comment-input-block input[type="text"] { font-size: 12.5px; padding: 7px 9px; }
+  .comment-input-block textarea {
+    width: 100%; min-height: 56px; font-family: inherit; font-size: 13px; padding: 9px 10px;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--ink); resize: vertical;
+  }
+  .comment-submit-row { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .activity-feed { display: flex; flex-direction: column; gap: 14px; max-height: 480px; overflow-y: auto; padding-right: 2px; }
+  .activity-item { display: flex; gap: 10px; }
+  .activity-avatar {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex: none;
+  }
+  .activity-body { flex: 1; min-width: 0; }
+  .activity-meta { font-size: 12.5px; margin-bottom: 4px; }
+  .activity-meta .aname { font-weight: 700; }
+  .activity-meta .atime { color: var(--ink-faint); font-size: 11px; margin-left: 6px; }
+  .activity-text {
+    font-size: 13px; line-height: 1.4; white-space: pre-wrap;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 8px 10px;
+  }
+  .comments-empty { font-size: 12.5px; color: var(--ink-faint); }
+  .activity-system { font-size: 12px; color: var(--ink-faint); padding: 2px 2px; line-height: 1.5; }
+  @media (max-width: 780px) {
+    .modal.wide { max-width: 600px; }
+    .modal-body { flex-direction: column; }
+    .modal-right { border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px; }
+  }
+
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: #fff; font-size: 13px; font-weight: 600;
+    padding: 10px 18px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  .loading-wrap { display: flex; align-items: center; justify-content: center; padding: 80px 0; color: var(--ink-muted); font-size: 13.5px; }
+  ::placeholder { color: var(--ink-faint); }
+
+  @media (max-width: 760px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; padding: 10px 12px; }
+    .sidebar-title { display: none; }
+    .series-item { flex: none; margin-bottom: 0; margin-right: 4px; }
+    .sidebar-foot { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout" id="appRoot" style="display:none;">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-title">Series</div>
+    <div id="seriesList"></div>
+    <div class="sidebar-foot">
+      <div class="current-user-line" id="currentUserLine"></div>
+      <button id="exportBtn" class="ghost" title="Download all tickets and releases (all series) as a JSON backup">Export</button>
+    </div>
+  </nav>
+
+  <div class="app">
+    <header class="top">
+      <div>
+        <h1 id="seriesTitle">Service Ticket Tracker</h1>
+        <div class="sub" id="seriesSub">Bugs &amp; firmware requests — shared across the whole service and development team</div>
+      </div>
+      <div class="top-actions">
+        <div class="view-toggle">
+          <button id="viewKanbanBtn" class="active">Board</button>
+          <button id="viewListBtn">List</button>
+          <button id="viewReleasesBtn">Releases</button>
+        </div>
+        <button id="newTicketBtn" class="primary">+ New ticket</button>
+        <button id="newReleaseBtn" class="primary" style="display:none;">+ New release</button>
+      </div>
+    </header>
+
+    <div class="filters" id="filters" style="display:none;">
+      <input type="text" id="searchInput" placeholder="Search title or description…">
+      <select id="filterType"><option value="">All types</option><option value="Bug">Bug</option><option value="Firmware request">Firmware request</option></select>
+      <select id="filterCategory"><option value="">All categories</option><option>Hardware</option><option>Firmware</option><option>Software</option><option>Interoperability</option></select>
+      <select id="filterPriority"><option value="">All priorities</option><option value="Low">Low</option><option value="Medium">Medium</option><option value="High">High</option></select>
+      <select id="filterAssignee"><option value="">Everyone</option></select>
+      <span class="clear" id="clearFilters">Clear filters</span>
+    </div>
+
+    <div id="loading" class="loading-wrap">Loading tickets…</div>
+    <div id="boardView" class="board" style="display:none;"></div>
+    <div id="listView" style="display:none;"></div>
+    <div id="releasesView" class="releases-wrap" style="display:none;"></div>
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <div class="big">No tickets in this series yet</div>
+      <div>Create the first ticket to get started.</div>
+    </div>
+    <div id="releasesEmptyState" class="empty-state" style="display:none;">
+      <div class="big">No firmware releases planned yet</div>
+      <div>Add a release to start tracking which bugs ship in which firmware.</div>
+    </div>
+  </div>
+</div>
+
+<div id="modalOverlay" class="overlay" style="display:none;"></div>
+<div id="loginOverlay" class="overlay" style="display:none;"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+(function(){
+  const STORE_KEY = 'tracker-data';
+  const SERIES = ['Evolve Dynamic and Pro','Evolve 2','Explore','Discover 3','General projects'];
+  const SERIES_PREFIX = {
+    'Evolve Dynamic and Pro': 'EVPD',
+    'Evolve 2': 'EV2',
+    'Explore': 'EXP',
+    'Discover 3': 'DISC3',
+    'General projects': 'GEN',
+  };
+
+  // Manufacturer responsible for firmware on each series. Add a new series to SERIES/SERIES_PREFIX
+  // above, then add its manufacturer here too (e.g. a future 'Navigator' series would go under iPrima).
+  const SERIES_MANUFACTURER = {
+    'Evolve Dynamic and Pro': 'iPrima',
+    'Evolve 2': 'iPrima',
+    'Explore': 'iPrima',
+    'Discover 3': 'CVTE',
+    'General projects': '',
+  };
+
+  // Shared team password — a soft door, not real security (see chat for why).
+  // Edit this string directly to change it; anyone with this file's source can read it.
+  const TEAM_PASSWORD = 'PerfectFirmware2026';
+  const STATUSES = [
+    { id: 'Open', color: 'var(--st-open)' },
+    { id: 'In Progress', color: 'var(--st-progress)' },
+    { id: 'In Review', color: 'var(--st-review)' },
+    { id: 'Blocked', color: 'var(--st-blocked)' },
+    { id: 'Done', color: 'var(--st-done)' },
+  ];
+  const RELEASE_STATUSES = [
+    { id: 'Planned', color: 'var(--rel-planned)' },
+    { id: 'In Progress', color: 'var(--rel-progress)' },
+    { id: 'Released', color: 'var(--rel-released)' },
+  ];
+  const CATEGORIES = ['Hardware','Firmware','Software','Interoperability'];
+  const PRIORITIES = ['Low','Medium','High'];
+  const catClass = { Hardware:'cat-hardware', Firmware:'cat-firmware', Software:'cat-software', Interoperability:'cat-interop' };
+  const priClass = { Low:'pri-low', Medium:'pri-medium', High:'pri-high' };
+
+  let data = { seriesCounters: {}, releaseCounter: 0, tickets: [], releases: [] };
+  let view = 'kanban';
+  let currentUser = null;
+  let selectedSeries = SERIES[0];
+  let filters = { search:'', type:'', category:'', priority:'', assignee:'' };
+  let editingId = null;
+  let editingReleaseId = null;
+  let draftAttachments = [];
+  let dragTicketId = null;
+
+  const $ = (sel) => document.querySelector(sel);
+  const el = (tag, cls, html) => { const e = document.createElement(tag); if(cls) e.className = cls; if(html!==undefined) e.innerHTML = html; return e; };
+  const esc = (s) => (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmtDate = (iso) => { if(!iso) return '—'; try { return new Date(iso).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}); } catch(e){ return '—'; } };
+  const initials = (name) => (name||'?').trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase() || '?';
+
+  function migrateLegacy(t){
+    const priMap = { Laag:'Low', Midden:'Medium', Hoog:'High' };
+    if (priMap[t.priority]) t.priority = priMap[t.priority];
+    if (!t.series) t.series = 'General projects';
+    if (t.release === undefined) t.release = '';
+    if (!Array.isArray(t.comments)) t.comments = [];
+    if (!Array.isArray(t.activity)) t.activity = [];
+    return t;
+  }
+
+  function toast(msg){
+    const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+    setTimeout(()=> t.classList.remove('show'), 2200);
+  }
+
+  function knownNames(){
+    return Array.from(new Set(data.tickets.flatMap(t=>[t.reporter, t.assignee, ...(t.comments||[]).map(c=>c.author)]).filter(Boolean))).sort();
+  }
+
+  function showEntryGate(prefillName){
+    return new Promise(resolve => {
+      const names = knownNames();
+      const overlay = $('#loginOverlay');
+      overlay.innerHTML = `
+        <div class="modal narrow" role="dialog" aria-modal="true">
+          <div class="modal-head"><h2>Team access</h2></div>
+          <div class="meta-note">This board is for the Legamaster service &amp; development team. Enter your name and the shared password to continue.</div>
+
+          ${names.length ? `
+            <div class="field">
+              <label>Existing names</label>
+              <div class="login-chip-row" id="loginNameChips">
+                ${names.map(n=>`<button type="button" class="ghost small login-chip" data-name="${esc(n)}">${esc(n)}</button>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+          <div class="field">
+            <label for="gate_name">${names.length ? 'Or enter your name' : 'Your name'}</label>
+            <input type="text" id="gate_name" value="${esc(prefillName||'')}" placeholder="Who's working on this board?" autocomplete="off">
+          </div>
+
+          <div class="field">
+            <label for="gate_pw">Password</label>
+            <input type="password" id="gate_pw" placeholder="Password" autocomplete="off">
+          </div>
+
+          <div class="meta-note" id="gateError" style="color:var(--type-bug); display:none;"></div>
+          <div class="modal-foot"><span></span><button class="primary" id="gateContinueBtn" type="button">Continue</button></div>
+        </div>
+      `;
+      overlay.style.display = 'flex';
+
+      const showError = (msg) => { const e = $('#gateError'); e.textContent = msg; e.style.display = 'block'; };
+
+      const tryContinue = async () => {
+        const pw = $('#gate_pw').value;
+        const name = $('#gate_name').value.trim();
+        if (pw !== TEAM_PASSWORD){
+          showError('Incorrect password — try again.');
+          $('#gate_pw').value = ''; $('#gate_pw').focus();
+          return;
+        }
+        if (!name){
+          showError('Please enter your name.');
+          $('#gate_name').focus();
+          return;
+        }
+        currentUser = name;
+        try {
+          await window.storage.set('gate-passed', 'true', false);
+          await window.storage.set('my-name', name, false);
+        } catch(e) { /* best effort — not critical if this fails */ }
+        overlay.style.display = 'none';
+        overlay.innerHTML = '';
+        resolve();
+      };
+
+      overlay.querySelectorAll('.login-chip').forEach(btn => {
+        btn.addEventListener('click', () => { $('#gate_name').value = btn.dataset.name; });
+      });
+      $('#gateContinueBtn').addEventListener('click', tryContinue);
+      $('#gate_pw').addEventListener('keydown', e => { if (e.key === 'Enter') tryContinue(); });
+      $('#gate_name').addEventListener('keydown', e => { if (e.key === 'Enter') tryContinue(); });
+      $('#gate_name').focus();
+    });
+  }
+
+  async function ensureAccess(){
+    let hasPassword = false, knownName = '';
+    try {
+      const res = await window.storage.get('gate-passed', false);
+      if (res && res.value === 'true') hasPassword = true;
+    } catch(e) { /* not passed yet on this device — expected */ }
+    try {
+      const res = await window.storage.get('my-name', false);
+      if (res && res.value){ knownName = res.value; currentUser = res.value; }
+    } catch(e) { /* not set yet — expected on first use */ }
+    if (hasPassword && knownName) return;
+    await showEntryGate(knownName);
+  }
+
+  // Lighter, name-only gate used when someone taps "Switch" after already being let in.
+  function showWhoAreYouGate(){
+    return new Promise(resolve => {
+      const names = knownNames();
+      const overlay = $('#loginOverlay');
+      overlay.innerHTML = `
+        <div class="modal narrow" role="dialog" aria-modal="true">
+          <div class="modal-head"><h2>Who's using this?</h2></div>
+          <div class="meta-note">Your name shows up on comments and activity so the team knows who did what.</div>
+          ${names.length ? `
+            <div class="field">
+              <label>Existing names</label>
+              <div class="login-chip-row" id="loginNameChips">
+                ${names.map(n=>`<button type="button" class="ghost small login-chip" data-name="${esc(n)}">${esc(n)}</button>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+          <div class="field">
+            <label for="login_name">${names.length ? 'Or enter your name' : 'Your name'}</label>
+            <input type="text" id="login_name" placeholder="Your name" autocomplete="off">
+          </div>
+          <div class="modal-foot"><span></span><button class="primary" id="loginContinueBtn" type="button">Continue</button></div>
+        </div>
+      `;
+      overlay.style.display = 'flex';
+
+      const finish = async (rawName) => {
+        const name = (rawName || '').trim();
+        if (!name){ $('#login_name').focus(); toast('Please enter a name'); return; }
+        currentUser = name;
+        try { await window.storage.set('my-name', name, false); } catch(e){ /* best effort — not critical if this fails */ }
+        overlay.style.display = 'none';
+        overlay.innerHTML = '';
+        resolve();
+      };
+
+      overlay.querySelectorAll('.login-chip').forEach(btn => {
+        btn.addEventListener('click', () => finish(btn.dataset.name));
+      });
+      $('#loginContinueBtn').addEventListener('click', () => finish($('#login_name').value));
+      $('#login_name').addEventListener('keydown', e => { if (e.key === 'Enter') finish($('#login_name').value); });
+      $('#login_name').focus();
+    });
+  }
+
+  function updateCurrentUserDisplay(){
+    const wrap = $('#currentUserLine');
+    if (!wrap) return;
+    wrap.innerHTML = currentUser
+      ? `Signed in as <strong>${esc(currentUser)}</strong><span class="switch-link" id="switchUserBtn">Switch</span>`
+      : '';
+    const btn = $('#switchUserBtn');
+    if (btn) btn.addEventListener('click', () => switchUser());
+  }
+
+  async function switchUser(reopenTicketId){
+    await showWhoAreYouGate();
+    updateCurrentUserDisplay();
+    if (reopenTicketId) openModal(reopenTicketId);
+  }
+
+  function logActivity(ticket, text){
+    if (!Array.isArray(ticket.activity)) ticket.activity = [];
+    const attributed = currentUser ? `${text} — ${currentUser}` : text;
+    ticket.activity.push({ id: 'A' + Date.now().toString(36) + Math.random().toString(36).slice(2,5), text: attributed, createdAt: new Date().toISOString() });
+  }
+
+  function d(s){ return s + 'T09:00:00.000Z'; } // helper: date-only string -> ISO timestamp
+  function cm(author, text, dateStr){ return { id:'C'+Math.random().toString(36).slice(2,8), author, text, createdAt:d(dateStr) }; }
+
+  // Real issue data imported from the team's Excel tracker (replaces the earlier example tickets).
+  function buildRealIssueImport(){
+    const releases = [
+      { id:'R1', series:'Evolve Dynamic and Pro', version:'1.1.16', targetDate:'2026-08-07', status:'Released', downloadUrl:'', notes:'Batch of feature requests and bug fixes merged for release.', createdAt:d('2026-07-02'), updatedAt:d('2026-08-03') },
+      { id:'R2', series:'Evolve Dynamic and Pro', version:'1.1.18', targetDate:'', status:'In Progress', downloadUrl:'', notes:'', createdAt:d('2026-08-19'), updatedAt:d('2026-08-21') },
+      { id:'R3', series:'Evolve Dynamic and Pro', version:'1.1.19', targetDate:'', status:'Planned', downloadUrl:'', notes:'Postponed from 1.1.18.', createdAt:d('2026-08-19'), updatedAt:d('2026-08-25') },
+      { id:'R4', series:'Discover 3', version:'1.0.34', targetDate:'', status:'In Progress', downloadUrl:'', notes:'HDMI EDID version fix — confirmed working via serial commands, pending formal rollout.', createdAt:d('2026-08-04'), updatedAt:d('2026-08-27') },
+      { id:'R5', series:'Discover 3', version:'1.0.35', targetDate:'', status:'Planned', downloadUrl:'', notes:'', createdAt:d('2026-08-12'), updatedAt:d('2026-08-26') },
+    ];
+
+    const tickets = [
+      { id:'EVPD-01', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Done',
+        title:"Add safe mode, clear-browser-data toggles to match other models",
+        description:"The new version adds the following three features that are already available on other models and that users are accustomed to: Safe mode on/off, Clear browser data on/off, Auto clear browser data.\n\nProgress: five feature requests and two bugs were merged into a new version, expected for release around August 7. After Legamaster testing, Prima uploads it to Xyte.\n\nNote: modifications are typically synchronized across four versions (SA5E-EL and SA5E-PL: 1.1.1x and 1.2.x). Versions starting with 1.2.x are firmware for newer motherboards.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'', attachments:[], comments:[], activity:[], createdAt:d('2026-07-02'), updatedAt:d('2026-08-03') },
+
+      { id:'EVPD-02', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Done',
+        title:"Replace Auto Loop with a No-Signal-Switch dropdown",
+        description:"Change Auto loop to No signal switch, add a drop-down menu to select the signal source, and Android set as the final destination.\n\nDesign note: Android becomes the fourth item in the list; when actually performing a loop query, Android is the last destination.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[], comments:[], activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-07-07') },
+
+      { id:'EVPD-03', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Done',
+        title:"Rename 'System Suspend Mode' to 'Quick Standby', move to Power settings",
+        description:"Change \"System Suspend Mode\" to \"Quick Standby\" and move it to Power Settings under the main settings menu.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[],
+        comments:[ cm('Tom','Found fixed in 1.1.16.','2026-08-03') ], activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-08-03') },
+
+      { id:'EVPD-04', series:'Evolve Dynamic and Pro', type:'Bug', category:'Software', priority:'Medium', status:'Done',
+        title:"High Contrast Text / Anti Blue Light changes unrelated font elements",
+        description:"After enabling High Contrast Text and Anti Blue Light, some font elements that shouldn't have changed changed.\n\nReproduced in person with DQA and PM.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[],
+        comments:[ cm('Tom','A second location where this occurs was discovered.','2026-07-13'), cm('Tom','Found fixed in 1.1.16.','2026-08-03') ],
+        activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-08-03') },
+
+      { id:'EVPD-05', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
+        title:"Renamed signal source still shows old name in main menu",
+        description:"After renaming the signal source, the signal source in the main menu still displays the original name.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R2', attachments:[],
+        comments:[
+          cm('Tom','Reproduced the bug in person for DQA.','2026-07-15'),
+          cm('Tom','Still not fixed in 1.1.16.','2026-07-28'),
+          cm('Tom','Will fix in 1.1.18.','2026-08-19'),
+          cm('Tom','Confirmed: will fix in 1.1.18.','2026-08-21'),
+        ], activity:[], createdAt:d('2026-07-10'), updatedAt:d('2026-08-21') },
+
+      { id:'EVPD-06', series:'Evolve Dynamic and Pro', type:'Bug', category:'Interoperability', priority:'Medium', status:'Done',
+        title:"Unable to output 4K HDMI signal",
+        description:"Unable to output 4K HDMI signal.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'', attachments:[],
+        comments:[ cm('Tom','Verified: EVOLVE Pro output to EVOLVE Pro requires a reinforced HDMI cable — the standard cable only supports 1080p. EVOLVE Pro output to Discover 3 keeps detecting signal. Tom used a non-reinforced cable for the failed combinations. Still to clarify: (1) why a reinforced cable is needed, and (2) the root cause of the failure. DQA suspects it\'s related to the EDID format, but evidence is still needed.','2026-07-15') ],
+        activity:[], createdAt:d('2026-07-14'), updatedAt:d('2026-07-15') },
+
+      { id:'EVPD-07', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Software', priority:'Medium', status:'In Progress',
+        title:"Whiteboard cloud upload requires saving locally first",
+        description:"Uploading files from the whiteboard to the cloud requires saving them locally first. This is redundant and consumes local storage space. Requirement: save directly to the cloud drive.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R3', attachments:[],
+        comments:[
+          cm('Tom','Submitted to iPrima PM (she was on leave two days ago).','2026-07-16'),
+          cm('Tom','Plan to accomplish in the next version.','2026-07-21'),
+          cm('Tom','Will check.','2026-08-19'),
+          cm('Tom','Confirmed will be OK in 1.1.18.','2026-08-21'),
+          cm('Tom','Postponed to version 1.1.19.','2026-08-25'),
+        ], activity:[], createdAt:d('2026-07-14'), updatedAt:d('2026-08-25') },
+
+      { id:'EVPD-08', series:'Evolve Dynamic and Pro', type:'Bug', category:'Interoperability', priority:'Medium', status:'Done',
+        title:"Intune registration blocks native apps and Play Store access",
+        description:"After registering the screen with the third-party management platform Intune, native app access was lost and apps could not be downloaded from the Google Play Store.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'', zendeskRef:'', release:'', attachments:[],
+        comments:[
+          cm('Tom',"Don't have an Intune account to reproduce the issue yet.",'2026-07-30'),
+          cm('Tom','Tom provided an Intune account — awaiting testing.','2026-07-31'),
+          cm('Tom','Confirmed: this is by design.','2026-08-21'),
+        ], activity:[], createdAt:d('2026-07-28'), updatedAt:d('2026-08-21') },
+
+      { id:'EVPD-09', series:'Evolve Dynamic and Pro', type:'Bug', category:'Hardware', priority:'Medium', status:'Done',
+        title:"Blue standby LEDs stay on when screen is powered off",
+        description:"When the screen is off, it still shows 2 blue LEDs on.\n\nWorkaround found: disabling these 3 settings turns the LEDs off when the screen shuts down: 1. Wake on LAN, 2. Quick Standby, 3. Start up display by external device.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
+        comments:[ cm('Tom',"Requested to move 'Start up display by external device' into the normal Power settings menu.",'2026-08-21') ],
+        activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-21') },
+
+      { id:'EVPD-10', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
+        title:"Quick Standby ineffective when Wake on LAN is also enabled",
+        description:"In 1.1.16, when Wake on LAN and Quick Standby are enabled simultaneously, Quick Standby becomes ineffective.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'R2', attachments:[],
+        comments:[
+          cm('Tom','Will fix in 1.1.18.','2026-08-12'),
+          cm('Tom','RC5E has this issue too.','2026-08-14'),
+          cm('Tom','Confirmed: will fix in 1.1.18.','2026-08-21'),
+        ], activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-21') },
+
+      { id:'EVPD-11', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'Open',
+        title:"Shutdown prompt keeps popping up after enabling sleep mode",
+        description:"After activating sleep mode, a shutdown prompt keeps popping up.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
+        comments:[ cm('Tom','Waiting for update.','2026-08-19') ], activity:[], createdAt:d('2026-08-14'), updatedAt:d('2026-08-19') },
+
+      { id:'EVPD-12', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Open',
+        title:"Move 'start display by external device' to normal Power settings menu",
+        description:"'Start display by external device' change to the normal menu under Power settings.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'', zendeskRef:'', release:'', attachments:[],
+        comments:[
+          cm('Tom','Converted from bug EVPD-09 into a feature request.','2026-08-24'),
+          cm('Tom','Waiting for reply.','2026-08-26'),
+        ], activity:[], createdAt:d('2026-08-24'), updatedAt:d('2026-08-26') },
+
+      { id:'EVPD-13', series:'Evolve Dynamic and Pro', type:'Bug', category:'Hardware', priority:'Medium', status:'Open',
+        title:"AUX audio very low; built-in speaker stops working on AUX unplug",
+        description:"1. Audio input very low over AUX cable.\n2. When the AUX cable is plugged in, the external device plays sound; when the AUX cable is unplugged, the built-in speaker stops working.",
+        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
+        comments:[ cm('Tom','Reproduced with DQA and submitted to Claire.','2026-08-25') ], activity:[], createdAt:d('2026-08-25'), updatedAt:d('2026-08-25') },
+
+      { id:'EV2-01', series:'Evolve 2', type:'Bug', category:'Firmware', priority:'Medium', status:'Done',
+        title:"Swisscom network certificate imports to wrong location",
+        description:"The customer wants to import the Swisscom network certificate into the root directory, but the current import location is incorrect and it will not take effect.",
+        reporter:'Tom', assignee:'', product:'EVOLVE 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
+        comments:[
+          cm('Tom','Contacted RC software engineer — he asked the customer for a video of the desired install location.','2026-07-15'),
+          cm('Tom','Submitted the video and description to R&D.','2026-07-28'),
+          cm('Tom',"Submitted Prima's response to the customer.",'2026-07-29'),
+        ], activity:[], createdAt:d('2026-07-15'), updatedAt:d('2026-07-29') },
+
+      { id:'EV2-02', series:'Evolve 2', type:'Firmware request', category:'Software', priority:'Medium', status:'Done',
+        title:"Sign the EVOLVE 2 signage display app",
+        description:"Request to make the signage display app in EVOLVE 2 firmware signed.",
+        reporter:'Tom', assignee:'', product:'EVOLVE 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
+        comments:[
+          cm('Tom','Submitted to Claire, provided the APK.','2026-07-28'),
+          cm('Tom','Provided the signed APK to Tom.','2026-07-29'),
+        ], activity:[], createdAt:d('2026-07-28'), updatedAt:d('2026-07-29') },
+
+      { id:'DISC3-01', series:'Discover 3', type:'Bug', category:'Interoperability', priority:'Medium', status:'In Review',
+        title:"Can't receive 4K HDMI signal; stuck loading when switching sources",
+        description:"1. Unable to receive 4K HDMI signal.\n2. Keeps loading when switching signal sources.",
+        reporter:'Tom', assignee:'', product:'Discover 3', fwVersion:'1.0.33', zendeskRef:'', release:'R4', attachments:[],
+        comments:[
+          cm('Tom','Submitted info to CVTE.','2026-07-22'),
+          cm('Tom',"CVTE provided a new version — still can't receive 4K.",'2026-07-28'),
+          cm('Tom','CVTE provided another new version.','2026-07-31'),
+          cm('Tom','Provided logs to CVTE R&D.','2026-08-04'),
+          cm('Tom','Waiting for reply.','2026-08-19'),
+          cm('Tom','Received the serial port tool from CVTE.','2026-08-21'),
+          cm('Tom','Sent the latest log.','2026-08-25'),
+          cm('Tom','Tested in 1.0.34 with: dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,1 and dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,3 — 4K signal received successfully.','2026-08-27'),
+        ], activity:[], createdAt:d('2026-07-17'), updatedAt:d('2026-08-27') },
+
+      { id:'DISC3-02', series:'Discover 3', type:'Bug', category:'Interoperability', priority:'Medium', status:'Blocked',
+        title:"HDMI CLK still active even after disabling related setting",
+        description:"It is still invoked even after disabling the relevant setting.",
+        reporter:'Tom', assignee:'', product:'Discover 3', fwVersion:'', zendeskRef:'', release:'R5', attachments:[],
+        comments:[
+          cm('Tom','Submitted feature request to CVTE.','2026-08-12'),
+          cm('Tom','Reframed as a feature request: disable HDMI CLK when the product is manufactured.','2026-08-14'),
+          cm('Tom','Waiting for reply.','2026-08-17'),
+          cm('Tom','Waiting for reply.','2026-08-19'),
+          cm('Tom','Waiting for reply.','2026-08-25'),
+          cm('Tom','Waiting for 1.0.35.','2026-08-26'),
+        ], activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-26') },
+
+      { id:'EXP-01', series:'Explore', type:'Bug', category:'Hardware', priority:'Medium', status:'In Progress',
+        title:"Standby wake only works via HDMI port 1",
+        description:"In standby mode, only HDMI port 1 can wake the device, and the cable must be unplugged and plugged back in. Powering on via an HDMI source will not wake the device. HDMI ports 2 and 3 also cannot wake the device.",
+        reporter:'Tom', assignee:'', product:'Explore 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
+        comments:[
+          cm('Tom','Waiting for update.','2026-08-19'),
+          cm('Tom','Confirmed: ports 2 & 3 not waking the device is by design.','2026-08-26'),
+          cm('Tom',"Still need to find why powering on via an HDMI source doesn't wake the screen.",'2026-08-26'),
+        ], activity:[], createdAt:d('2026-08-14'), updatedAt:d('2026-08-26') },
+
+      { id:'GEN-01', series:'General projects', type:'Firmware request', category:'Interoperability', priority:'High', status:'In Progress',
+        title:"Extract & distribute device parameters via Xyte platform",
+        description:"Extract parameters from one registered machine and distribute them to other machines through the Xyte platform.",
+        reporter:'Tom', assignee:'', product:'', fwVersion:'', zendeskRef:'', release:'', attachments:[],
+        comments:[
+          cm('Tom','Awaiting Marcos to provide the needed extraction parameters to determine the cooperation method.','2026-08-03'),
+          cm('Tom','All settings and apps now support upload.','2026-08-19'),
+          cm('Tom','Marcos will provide the list.','2026-08-19'),
+          cm('Tom','List provided.','2026-08-25'),
+        ], activity:[], createdAt:d('2026-08-03'), updatedAt:d('2026-08-25') },
+
+      { id:'GEN-02', series:'General projects', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
+        title:"Shutdown prompt timing wrong on power button (coreone)",
+        description:"The shutdown prompt only appears after pressing and releasing the power button. Requested: it should appear during the power button press, like on other models.",
+        reporter:'Tom', assignee:'', product:'', fwVersion:'coreone', zendeskRef:'', release:'', attachments:[],
+        comments:[ cm('Tom','Will fix in the next coreone version.','2026-08-21') ], activity:[], createdAt:d('2026-08-21'), updatedAt:d('2026-08-21') },
+    ];
+
+    const seriesCounters = { 'Evolve Dynamic and Pro':13, 'Evolve 2':2, 'Explore':1, 'Discover 3':2, 'General projects':2 };
+    return { tickets, releases, seriesCounters, releaseCounter: 5 };
+  }
+
+  // Renumbers any ticket whose ID doesn't match its series' current prefix (e.g. old LM-xxx tickets,
+  // or a ticket that was moved to a different series). Runs once per load; a no-op once everything matches.
+  function migrateTicketIds(){
+    const mismatched = data.tickets.some(t => {
+      const prefix = SERIES_PREFIX[t.series] || 'GEN';
+      return !t.id || !t.id.startsWith(prefix + '-');
+    });
+    if (!mismatched) return false;
+    const counters = {};
+    SERIES.forEach(s => counters[s] = 0);
+    data.tickets.slice().sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt)).forEach(t => {
+      const prefix = SERIES_PREFIX[t.series] || 'GEN';
+      counters[t.series] = (counters[t.series] || 0) + 1;
+      t.id = prefix + '-' + String(counters[t.series]).padStart(2,'0');
+    });
+    data.seriesCounters = counters;
+    return true;
+  }
+
+  async function loadData(){
+    let needsPersist = false;
+    try {
+      const res = await window.storage.get(STORE_KEY, true);
+      if (res && res.value) {
+        data = JSON.parse(res.value);
+        if (!Array.isArray(data.tickets)) data.tickets = [];
+        if (!Array.isArray(data.releases)) data.releases = [];
+        if (!data.seriesCounters || typeof data.seriesCounters !== 'object') data.seriesCounters = {};
+        if (typeof data.releaseCounter !== 'number') data.releaseCounter = data.releases.length;
+        data.releases.forEach(r => { if (r.downloadUrl === undefined) r.downloadUrl = ''; });
+        data.tickets = data.tickets.map(migrateLegacy);
+        if (migrateTicketIds()) needsPersist = true;
+      }
+    } catch(e) {
+      // A non-existent key throws rather than returning null — leave `data` at its default empty shape.
+    }
+
+    // One-time replacement of any earlier example/test data with the real imported issue list.
+    if (!data.realDataImported){
+      const imported = buildRealIssueImport();
+      data.tickets = imported.tickets;
+      data.releases = imported.releases;
+      data.seriesCounters = imported.seriesCounters;
+      data.releaseCounter = imported.releaseCounter;
+      data.realDataImported = true;
+      needsPersist = true;
+    }
+
+    // One-time cleanup: the manufacturer used to be stored in the Assignee field.
+    // It now shows automatically per series instead, so clear it out of Assignee.
+    if (!data.manufacturerFieldCleared){
+      data.tickets.forEach(t => {
+        if (t.assignee && t.assignee === SERIES_MANUFACTURER[t.series]) t.assignee = '';
+      });
+      data.manufacturerFieldCleared = true;
+      needsPersist = true;
+    }
+
+    if (needsPersist) await persist();
+    $('#loading').style.display = 'none';
+
+    await ensureAccess();
+
+    $('#appRoot').style.display = 'flex';
+    $('#filters').style.display = 'flex';
+    updateCurrentUserDisplay();
+
+    const hashId = decodeURIComponent((window.location.hash || '').replace('#',''));
+    const linkedTicket = hashId ? data.tickets.find(t=>t.id===hashId) : null;
+    if (linkedTicket) selectedSeries = linkedTicket.series;
+
+    renderSidebar();
+    populateAssigneeFilter();
+    render();
+
+    if (linkedTicket) openModal(linkedTicket.id);
+    else if (hashId) toast('Ticket ' + hashId + ' was not found — it may have been deleted');
+  }
+
+  async function persist(){
+    try {
+      const res = await window.storage.set(STORE_KEY, JSON.stringify(data), true);
+      if (!res) toast('Save failed — please try again');
+    } catch(e) {
+      toast('Save failed — please try again');
+    }
+  }
+
+  function nextKey(series){
+    if (!data.seriesCounters) data.seriesCounters = {};
+    data.seriesCounters[series] = (data.seriesCounters[series] || 0) + 1;
+    const prefix = SERIES_PREFIX[series] || 'GEN';
+    return prefix + '-' + String(data.seriesCounters[series]).padStart(2,'0');
+  }
+  function nextReleaseId(){ data.releaseCounter += 1; return 'R' + data.releaseCounter; }
+
+  function renderSidebar(){
+    const wrap = $('#seriesList'); wrap.innerHTML = '';
+    const todayStr = new Date().toISOString().slice(0,10);
+    SERIES.forEach(s => {
+      const count = data.tickets.filter(t=>t.series===s).length;
+      const hasOverdue = data.releases.some(r => r.series===s && r.status!=='Released' && r.targetDate && r.targetDate < todayStr);
+      const item = el('div','series-item' + (s===selectedSeries ? ' active' : ''));
+      item.innerHTML = `<span>${esc(s)}${hasOverdue ? ' <span class="overdue-dot" title="Has an overdue firmware release"></span>' : ''}</span><span class="scount">${count}</span>`;
+      item.addEventListener('click', () => {
+        selectedSeries = s;
+        renderSidebar();
+        populateAssigneeFilter();
+        updateHeader();
+        render();
+      });
+      wrap.appendChild(item);
+    });
+  }
+
+  function updateHeader(){
+    $('#seriesTitle').textContent = selectedSeries;
+    const mfr = SERIES_MANUFACTURER[selectedSeries];
+    const mfrSuffix = mfr ? ` · Manufacturer: ${mfr}` : '';
+    $('#seriesSub').textContent = (view === 'releases'
+      ? 'Firmware releases and linked bugs for ' + selectedSeries
+      : 'Bugs & firmware requests for ' + selectedSeries) + mfrSuffix;
+  }
+
+  function populateAssigneeFilter(){
+    const sel = $('#filterAssignee');
+    const names = Array.from(new Set(data.tickets.filter(t=>t.series===selectedSeries).map(t=>t.assignee).filter(Boolean))).sort();
+    sel.innerHTML = '<option value="">Everyone</option><option value="__unassigned">Unassigned</option>' +
+      names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  }
+
+  function populateNameDatalists(){
+    let dl = $('#namesList');
+    if (!dl){ dl = el('datalist'); dl.id = 'namesList'; document.body.appendChild(dl); }
+    const names = Array.from(new Set(data.tickets.flatMap(t=>[t.reporter, t.assignee, ...(t.comments||[]).map(c=>c.author)]).filter(Boolean))).sort();
+    dl.innerHTML = names.map(n=>`<option value="${esc(n)}">`).join('');
+  }
+
+  function filteredTickets(){
+    return data.tickets.filter(t => {
+      if (t.series !== selectedSeries) return false;
+      if (filters.search){
+        const q = filters.search.toLowerCase();
+        if (!(t.title||'').toLowerCase().includes(q) && !(t.description||'').toLowerCase().includes(q)) return false;
+      }
+      if (filters.type && t.type !== filters.type) return false;
+      if (filters.category && t.category !== filters.category) return false;
+      if (filters.priority && t.priority !== filters.priority) return false;
+      if (filters.assignee){
+        if (filters.assignee === '__unassigned' && t.assignee) return false;
+        if (filters.assignee !== '__unassigned' && t.assignee !== filters.assignee) return false;
+      }
+      return true;
+    }).sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }
+
+  function render(){
+    $('#filters').style.display = (view === 'releases') ? 'none' : 'flex';
+    $('#newTicketBtn').style.display = (view === 'releases') ? 'none' : '';
+    $('#newReleaseBtn').style.display = (view === 'releases') ? '' : 'none';
+    updateHeader();
+
+    if (view === 'releases'){
+      $('#boardView').style.display = 'none';
+      $('#listView').style.display = 'none';
+      $('#emptyState').style.display = 'none';
+      renderReleasesView();
+      return;
+    }
+    $('#releasesView').style.display = 'none';
+    $('#releasesEmptyState').style.display = 'none';
+
+    const list = filteredTickets();
+    const seriesTotal = data.tickets.filter(t=>t.series===selectedSeries).length;
+    $('#emptyState').style.display = (seriesTotal === 0) ? 'block' : 'none';
+    $('#boardView').style.display = (view==='kanban' && seriesTotal>0) ? 'flex' : 'none';
+    $('#listView').style.display = (view==='list' && seriesTotal>0) ? 'block' : 'none';
+    if (seriesTotal === 0) return;
+    if (view === 'kanban') renderBoard(list); else renderList(list);
+  }
+
+  function ticketBadges(t){
+    return `
+      <span class="badge ${t.type==='Bug'?'type-bug':'type-fw'}">${t.type==='Bug'?'Bug':'Firmware request'}</span>
+      <span class="badge ${catClass[t.category]}">${esc(t.category)}</span>
+      <span class="badge ${priClass[t.priority]}">${esc(t.priority)}</span>
+    `;
+  }
+
+  function renderBoard(list){
+    const board = $('#boardView'); board.innerHTML = '';
+    STATUSES.forEach(st => {
+      const col = el('div','column');
+      col.dataset.status = st.id;
+      const items = list.filter(t=>t.status===st.id);
+      col.innerHTML = `<div class="column-head"><span class="dot" style="background:${st.color}"></span>${esc(st.id)}<span class="count">${items.length}</span></div>`;
+      const body = el('div','column-body');
+      if (items.length===0){ body.appendChild(el('div','column-empty','No tickets')); }
+      else { items.forEach(t => body.appendChild(renderCard(t))); }
+      col.appendChild(body);
+
+      col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+      col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+      col.addEventListener('drop', e => {
+        e.preventDefault(); col.classList.remove('drag-over');
+        if (!dragTicketId) return;
+        const t = data.tickets.find(x=>x.id===dragTicketId);
+        if (t && t.status !== st.id){
+          logActivity(t, `Status changed from "${t.status}" to "${st.id}"`);
+          t.status = st.id; t.updatedAt = new Date().toISOString(); persist(); render();
+        }
+        dragTicketId = null;
+      });
+      board.appendChild(col);
+    });
+  }
+
+  function releaseVersionFor(releaseId){
+    const r = data.releases.find(x=>x.id===releaseId);
+    return r ? r.version : null;
+  }
+
+  function renderCard(t){
+    const card = el('div','card');
+    card.draggable = true;
+    card.tabIndex = 0;
+    const relVersion = t.release ? releaseVersionFor(t.release) : null;
+    card.innerHTML = `
+      <div class="card-top"><span class="ticket-key mono">${t.id}</span></div>
+      <p class="card-title">${esc(t.title)}</p>
+      <div class="card-badges">${ticketBadges(t)}</div>
+      ${relVersion ? `<div class="release-tag">→ Fix targeted for v${esc(relVersion)}</div>` : ''}
+      <div class="card-foot">
+        <span>${t.assignee ? esc(t.assignee) : '<span class="unassigned">unassigned</span>'}${(t.comments&&t.comments.length) ? ` · 💬 ${t.comments.length}` : ''}</span>
+        ${t.assignee ? `<span class="avatar">${initials(t.assignee)}</span>` : ''}
+      </div>
+    `;
+    card.addEventListener('dragstart', () => { dragTicketId = t.id; card.classList.add('dragging'); });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('click', () => openModal(t.id));
+    card.addEventListener('keydown', e => { if (e.key==='Enter') openModal(t.id); });
+    return card;
+  }
+
+  function renderList(list){
+    const wrap = $('#listView'); wrap.innerHTML = '';
+    const table = el('table');
+    table.innerHTML = `<thead><tr>
+      <th>Key</th><th>Title</th><th>Type</th><th>Category</th><th>Priority</th><th>Status</th><th>Assignee</th><th>FW version</th><th>Release</th><th>Updated</th>
+    </tr></thead>`;
+    const tbody = el('tbody');
+    list.forEach(t => {
+      const relVersion = t.release ? releaseVersionFor(t.release) : null;
+      const tr = el('tr');
+      tr.innerHTML = `
+        <td class="mono ticket-key">${t.id}</td>
+        <td class="title-cell">${esc(t.title)}</td>
+        <td><span class="badge ${t.type==='Bug'?'type-bug':'type-fw'}">${t.type==='Bug'?'Bug':'FW request'}</span></td>
+        <td><span class="badge ${catClass[t.category]}">${esc(t.category)}</span></td>
+        <td><span class="badge ${priClass[t.priority]}">${esc(t.priority)}</span></td>
+        <td></td>
+        <td>${t.assignee ? esc(t.assignee) : '<span class="unassigned">—</span>'}</td>
+        <td class="mono">${t.fwVersion ? esc(t.fwVersion) : '—'}</td>
+        <td class="mono">${relVersion ? 'v'+esc(relVersion) : '—'}</td>
+        <td>${fmtDate(t.updatedAt)}</td>
+      `;
+      const statusTd = tr.children[5];
+      const statusSel = el('select','status-select');
+      statusSel.style.background = STATUSES.find(s=>s.id===t.status).color;
+      statusSel.style.color = '#fff'; statusSel.style.border = 'none';
+      STATUSES.forEach(s => {
+        const o = el('option', null, s.id); o.value = s.id; if (s.id===t.status) o.selected = true;
+        statusSel.appendChild(o);
+      });
+      statusSel.addEventListener('click', e => e.stopPropagation());
+      statusSel.addEventListener('change', () => {
+        const oldStatus = t.status;
+        t.status = statusSel.value; t.updatedAt = new Date().toISOString();
+        logActivity(t, `Status changed from "${oldStatus}" to "${t.status}"`);
+        statusSel.style.background = STATUSES.find(s=>s.id===t.status).color;
+        persist();
+      });
+      statusTd.appendChild(statusSel);
+      tr.addEventListener('click', () => openModal(t.id));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  // ---- Releases view ----
+  function renderReleasesView(){
+    const wrap = $('#releasesView');
+    const releases = data.releases.filter(r=>r.series===selectedSeries)
+      .sort((a,b) => (a.targetDate||'9999').localeCompare(b.targetDate||'9999'));
+
+    if (releases.length === 0){
+      wrap.style.display = 'none';
+      $('#releasesEmptyState').style.display = 'block';
+      return;
+    }
+    $('#releasesEmptyState').style.display = 'none';
+    wrap.style.display = 'flex';
+    wrap.innerHTML = '';
+
+    releases.forEach(r => {
+      const linked = data.tickets.filter(t => t.release === r.id);
+      const done = linked.filter(t => t.status === 'Done').length;
+      const rs = RELEASE_STATUSES.find(s=>s.id===r.status) || RELEASE_STATUSES[0];
+      const todayStr = new Date().toISOString().slice(0,10);
+      const isOverdue = r.targetDate && r.status !== 'Released' && r.targetDate < todayStr;
+
+      const card = el('div','release-card' + (isOverdue ? ' overdue' : ''));
+      card.innerHTML = `
+        <div class="release-head">
+          <span class="release-version">v${esc(r.version)}</span>
+          <span class="release-status-pill" style="background:${rs.color}">${esc(r.status)}</span>
+          <span class="release-date">Target: ${fmtDate(r.targetDate)}</span>
+          ${isOverdue ? `<span class="overdue-badge">Overdue</span>` : ''}
+          <span class="release-progress">${linked.length ? `${done}/${linked.length} resolved` : 'No linked tickets'}</span>
+          <span class="release-actions">
+            <button class="ghost small" data-act="edit">Edit</button>
+            <button class="ghost small danger" data-act="delete">Delete</button>
+          </span>
+        </div>
+        ${r.notes ? `<div class="release-notes">${esc(r.notes)}</div>` : ''}
+        ${r.downloadUrl ? `<div class="release-download"><a href="${esc(r.downloadUrl)}" target="_blank" rel="noopener">⬇ Download firmware v${esc(r.version)}</a></div>` : ''}
+        <div class="release-tickets"></div>
+      `;
+      card.querySelector('[data-act="edit"]').addEventListener('click', () => openReleaseModal(r.id));
+      card.querySelector('[data-act="delete"]').addEventListener('click', () => deleteRelease(r.id));
+
+      const ticketsWrap = card.querySelector('.release-tickets');
+      if (linked.length === 0){
+        ticketsWrap.appendChild(el('div','release-empty','No tickets linked to this release yet.'));
+      } else {
+        linked.sort((a,b)=> a.status==='Done' ? 1 : -1).forEach(t => {
+          const row = el('div','release-ticket-row');
+          const stColor = STATUSES.find(s=>s.id===t.status).color;
+          row.innerHTML = `
+            <span class="status-dot" style="background:${stColor}"></span>
+            <span class="ticket-key mono">${t.id}</span>
+            <span class="rt-title">${esc(t.title)}</span>
+            <span class="badge ${t.type==='Bug'?'type-bug':'type-fw'}">${t.type==='Bug'?'Bug':'FW request'}</span>
+            ${(t.comments&&t.comments.length) ? `<span style="color:var(--ink-muted); font-size:11.5px;">💬 ${t.comments.length}</span>` : ''}
+            <span style="color:var(--ink-muted); font-size:11.5px;">${esc(t.status)}</span>
+          `;
+          row.addEventListener('click', () => openModal(t.id));
+          ticketsWrap.appendChild(row);
+        });
+      }
+      wrap.appendChild(card);
+    });
+
+    const backlogCount = data.tickets.filter(t=>t.series===selectedSeries && !t.release).length;
+    if (backlogCount > 0){
+      const note = el('div','backlog-note', `${backlogCount} ticket${backlogCount===1?'':'s'} in ${esc(selectedSeries)} ${backlogCount===1?'is':'are'} not yet linked to a release.`);
+      wrap.appendChild(note);
+    }
+  }
+
+  function buildReleaseOptions(series, selectedId){
+    const opts = data.releases.filter(r=>r.series===series)
+      .sort((a,b) => (a.targetDate||'9999').localeCompare(b.targetDate||'9999'));
+    let html = `<option value="" ${!selectedId?'selected':''}>No release (backlog)</option>`;
+    opts.forEach(r => {
+      html += `<option value="${r.id}" ${selectedId===r.id?'selected':''}>v${esc(r.version)} — ${esc(r.status)} (${fmtDate(r.targetDate)})</option>`;
+    });
+    return html;
+  }
+
+  function openReleaseModal(id){
+    editingReleaseId = id || null;
+    const r = id ? data.releases.find(x=>x.id===id) : null;
+    const overlay = $('#modalOverlay');
+    overlay.innerHTML = `
+      <div class="modal narrow" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <h2>${r ? 'Edit release' : 'New firmware release'}</h2>
+          <button class="ghost" id="closeModalBtn" aria-label="Close">✕</button>
+        </div>
+        <div class="meta-note">Series: ${esc(selectedSeries)}</div>
+
+        <div class="field">
+          <label for="r_version">Version</label>
+          <input type="text" id="r_version" value="${r? esc(r.version):''}" placeholder="e.g. 2.15.0">
+        </div>
+        <div class="field row2">
+          <div>
+            <label for="r_date">Target release date</label>
+            <input type="date" id="r_date" value="${r? esc(r.targetDate||''):''}">
+          </div>
+          <div>
+            <label for="r_status">Status</label>
+            <select id="r_status">${RELEASE_STATUSES.map(s=>`<option ${r&&r.status===s.id?'selected':''}>${s.id}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="r_download">Firmware download link (optional)</label>
+          <input type="url" id="r_download" value="${r? esc(r.downloadUrl||''):''}" placeholder="https://…">
+        </div>
+        <div class="field">
+          <label for="r_notes">Notes (optional)</label>
+          <textarea id="r_notes" placeholder="What's the focus of this release?">${r? esc(r.notes||''):''}</textarea>
+        </div>
+
+        <div class="modal-foot">
+          <div>${r ? '<button class="danger ghost" id="deleteReleaseBtn" type="button">Delete release</button>' : '<span></span>'}</div>
+          <div style="display:flex; gap:8px;">
+            <button class="ghost" id="cancelBtn" type="button">Cancel</button>
+            <button class="primary" id="saveReleaseBtn" type="button">${r?'Save':'Create release'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    overlay.style.display = 'flex';
+    $('#closeModalBtn').addEventListener('click', closeModal);
+    $('#cancelBtn').addEventListener('click', closeModal);
+    $('#saveReleaseBtn').addEventListener('click', saveRelease);
+    if (r) $('#deleteReleaseBtn').addEventListener('click', () => deleteRelease(r.id));
+    overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
+  }
+
+  async function saveRelease(){
+    const version = $('#r_version').value.trim();
+    if (!version){ $('#r_version').focus(); toast('Version is required'); return; }
+    const now = new Date().toISOString();
+    const downloadUrl = $('#r_download').value.trim();
+    if (editingReleaseId){
+      const r = data.releases.find(x=>x.id===editingReleaseId);
+      Object.assign(r, { version, targetDate: $('#r_date').value, status: $('#r_status').value, downloadUrl, notes: $('#r_notes').value.trim(), updatedAt: now });
+      toast('Release saved');
+    } else {
+      data.releases.push({ id: nextReleaseId(), series: selectedSeries, version, targetDate: $('#r_date').value, status: $('#r_status').value, downloadUrl, notes: $('#r_notes').value.trim(), createdAt: now, updatedAt: now });
+      toast('Release created');
+    }
+    await persist();
+    closeModal();
+    render();
+  }
+
+  async function deleteRelease(id){
+    if (!confirm('Delete this release? Linked tickets will move back to the backlog.')) return;
+    const rel = data.releases.find(r=>r.id===id);
+    data.releases = data.releases.filter(r=>r.id!==id);
+    data.tickets.forEach(t => {
+      if (t.release === id){
+        t.release = '';
+        logActivity(t, `Firmware release v${rel ? rel.version : '?'} was deleted — ticket moved back to backlog`);
+      }
+    });
+    await persist();
+    closeModal();
+    render();
+    toast('Release deleted');
+  }
+
+  // ---- Ticket Modal ----
+  function openModal(id){
+    editingId = id || null;
+    const t = id ? data.tickets.find(x=>x.id===id) : null;
+    draftAttachments = t ? JSON.parse(JSON.stringify(t.attachments||[])) : [];
+    populateNameDatalists();
+    const formSeries = t ? t.series : selectedSeries;
+
+    const overlay = $('#modalOverlay');
+    overlay.innerHTML = `
+      <div class="modal${t ? ' wide' : ''}" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <div class="modal-head-title">
+            <h2>${t ? `${t.id} — edit` : 'New ticket'}</h2>
+            ${t ? `<span class="status-pill-inline" id="headerStatusPill" style="background:${STATUSES.find(s=>s.id===t.status).color}">${esc(t.status)}</span>` : ''}
+          </div>
+          <div style="display:flex; gap:4px; align-items:center;">
+            ${t ? `<button class="ghost small" id="copyLinkBtn" title="Copy a link that opens this ticket directly">🔗 Copy link</button>` : ''}
+            <button class="ghost" id="closeModalBtn" aria-label="Close">✕</button>
+          </div>
+        </div>
+        ${t ? `<div class="meta-note">Created ${fmtDate(t.createdAt)} · last updated ${fmtDate(t.updatedAt)}</div>` : ''}
+
+        <div class="modal-body">
+        <div class="modal-left">
+
+        <div class="field">
+          <label for="f_series">Series</label>
+          <select id="f_series">${SERIES.map(s=>`<option ${formSeries===s?'selected':''}>${s}</option>`).join('')}</select>
+          <div class="meta-note" id="f_manufacturerNote">${SERIES_MANUFACTURER[formSeries] ? 'Manufacturer: ' + esc(SERIES_MANUFACTURER[formSeries]) : ''}</div>
+        </div>
+
+        <div class="field">
+          <label>Type</label>
+          <div class="radio-group" id="typeGroup">
+            <label class="radio-opt sel-bug ${(!t || t.type==='Bug')?'selected':''}"><input type="radio" name="type" value="Bug" ${(!t||t.type==='Bug')?'checked':''}>Bug</label>
+            <label class="radio-opt sel-fw ${(t && t.type==='Firmware request')?'selected':''}"><input type="radio" name="type" value="Firmware request" ${(t&&t.type==='Firmware request')?'checked':''}>Firmware request</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f_title">Title</label>
+          <input type="text" id="f_title" value="${t? esc(t.title):''}" placeholder="Short, clear summary">
+        </div>
+
+        <div class="field">
+          <label for="f_desc">Description</label>
+          <textarea id="f_desc" placeholder="What's the issue, steps to reproduce, expected vs. actual behavior…">${t? esc(t.description):''}</textarea>
+        </div>
+
+        <div class="field row3">
+          <div>
+            <label for="f_category">Category</label>
+            <select id="f_category">${CATEGORIES.map(c=>`<option ${t&&t.category===c?'selected':''}>${c}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label for="f_priority">Priority</label>
+            <select id="f_priority">${PRIORITIES.map(p=>`<option ${(t?t.priority===p:p==='Low')?'selected':''}>${p}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label for="f_status">Status</label>
+            <select id="f_status">${STATUSES.map(s=>`<option ${t&&t.status===s.id?'selected':''}>${s.id}</option>`).join('')}</select>
+          </div>
+        </div>
+
+        <div class="field row2">
+          <div>
+            <label for="f_reporter">Reporter</label>
+            <input type="text" id="f_reporter" list="namesList" value="${t? esc(t.reporter) : esc(currentUser||'')}" placeholder="Name">
+          </div>
+          <div>
+            <label for="f_assignee">Assignee (optional)</label>
+            <input type="text" id="f_assignee" list="namesList" value="${t? esc(t.assignee||''):''}" placeholder="Name">
+          </div>
+        </div>
+
+        <div class="field row2">
+          <div>
+            <label for="f_product">Product / screen model</label>
+            <input type="text" id="f_product" value="${t? esc(t.product||''):''}" placeholder="e.g. EVOLVE 75">
+          </div>
+          <div>
+            <label for="f_fw">FW version reported</label>
+            <input type="text" id="f_fw" value="${t? esc(t.fwVersion||''):''}" placeholder="e.g. 2.14.3">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f_release">Fix targeted for firmware release (optional)</label>
+          <select id="f_release">${buildReleaseOptions(formSeries, t ? t.release : '')}</select>
+        </div>
+
+        <div class="field">
+          <label for="f_zendesk">Zendesk reference (number or link)</label>
+          <input type="text" id="f_zendesk" value="${t? esc(t.zendeskRef||''):''}" placeholder="e.g. #12345 or full URL">
+        </div>
+
+        <div class="field">
+          <label>Attachments (link to screenshot, log, or video)</label>
+          <div class="attach-list" id="attachList"></div>
+          <div class="attach-add">
+            <input type="text" id="attachName" placeholder="Name (e.g. touch-issue screenshot)">
+            <input type="url" id="attachUrl" placeholder="https://…">
+            <button id="attachAddBtn" type="button">Add</button>
+          </div>
+        </div>
+
+        </div>
+        <div class="modal-right">
+          <div class="comments-header">Comments and activity</div>
+          ${t ? `
+            <div class="comment-input-block">
+              <div class="name-row commenting-as">Commenting as <strong>${esc(currentUser||'you')}</strong><span class="switch-link" id="commentSwitchUser">not you?</span></div>
+              <textarea id="c_text" placeholder="Write a comment…"></textarea>
+              <div class="comment-submit-row"><button id="c_addBtn" class="primary small" type="button">Comment</button></div>
+            </div>
+            <div class="activity-feed" id="activityFeed"></div>
+          ` : `<div class="comments-empty">Create the ticket first, then you'll be able to add comments here.</div>`}
+        </div>
+        </div>
+
+        <div class="modal-foot">
+          <div>${t ? '<button class="danger ghost" id="deleteBtn" type="button">Delete ticket</button>' : '<span></span>'}</div>
+          <div style="display:flex; gap:8px;">
+            <button class="ghost" id="cancelBtn" type="button">Cancel</button>
+            <button class="primary" id="saveBtn" type="button">${t?'Save':'Create ticket'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    overlay.style.display = 'flex';
+
+    overlay.querySelectorAll('.radio-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        overlay.querySelectorAll('.radio-opt').forEach(o=>o.classList.remove('selected'));
+        opt.classList.add('selected');
+        opt.querySelector('input').checked = true;
+      });
+    });
+
+    $('#f_series').addEventListener('change', () => {
+      const s = $('#f_series').value;
+      $('#f_release').innerHTML = buildReleaseOptions(s, '');
+      $('#f_manufacturerNote').textContent = SERIES_MANUFACTURER[s] ? 'Manufacturer: ' + SERIES_MANUFACTURER[s] : '';
+    });
+    if (t){
+      $('#f_status').addEventListener('change', () => {
+        const st = STATUSES.find(s=>s.id===$('#f_status').value);
+        const pill = $('#headerStatusPill');
+        if (pill && st){ pill.textContent = st.id; pill.style.background = st.color; }
+      });
+    }
+
+    renderAttachList();
+    $('#attachAddBtn').addEventListener('click', addAttachmentFromForm);
+    $('#closeModalBtn').addEventListener('click', closeModal);
+    $('#cancelBtn').addEventListener('click', closeModal);
+    $('#saveBtn').addEventListener('click', saveTicket);
+    if (t) $('#deleteBtn').addEventListener('click', () => deleteTicket(t.id));
+    if (t){
+      renderActivityFeed(t.id);
+      $('#c_addBtn').addEventListener('click', () => addComment(t.id));
+      $('#commentSwitchUser').addEventListener('click', () => switchUser(t.id));
+      $('#copyLinkBtn').addEventListener('click', () => copyTicketLink(t.id));
+      history.replaceState(null, '', '#' + encodeURIComponent(t.id));
+    }
+    overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
+  }
+
+  function copyTicketLink(ticketId){
+    const url = window.location.origin + window.location.pathname + '#' + encodeURIComponent(ticketId);
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(
+        () => toast('Link copied — opens ' + ticketId + ' directly'),
+        () => toast('Could not copy automatically. Link: ' + url)
+      );
+    } else {
+      toast('Could not copy automatically. Link: ' + url);
+    }
+  }
+
+  function renderActivityFeed(ticketId){
+    const t = data.tickets.find(x=>x.id===ticketId);
+    const wrap = $('#activityFeed');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const comments = (t.comments||[]).map(c => ({ kind:'comment', author:c.author, text:c.text, createdAt:c.createdAt }));
+    const activity = (t.activity||[]).map(a => ({ kind:'system', text:a.text, createdAt:a.createdAt }));
+    const feed = comments.concat(activity).sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (feed.length === 0){
+      wrap.appendChild(el('div','comments-empty','No activity yet — comments and changes will show up here.'));
+      return;
+    }
+    feed.forEach(entry => {
+      if (entry.kind === 'system'){
+        const row = el('div','activity-system', `${esc(entry.text)} · ${fmtDate(entry.createdAt)}`);
+        wrap.appendChild(row);
+        return;
+      }
+      const item = el('div','activity-item');
+      item.innerHTML = `
+        <div class="activity-avatar">${initials(entry.author)}</div>
+        <div class="activity-body">
+          <div class="activity-meta"><span class="aname">${esc(entry.author)}</span><span class="atime">${fmtDate(entry.createdAt)}</span></div>
+          <div class="activity-text">${esc(entry.text)}</div>
+        </div>
+      `;
+      wrap.appendChild(item);
+    });
+  }
+
+  async function addComment(ticketId){
+    const textEl = $('#c_text');
+    const author = currentUser || 'Unknown';
+    const text = textEl.value.trim();
+    if (!text){ textEl.focus(); toast('Comment text is required'); return; }
+    const t = data.tickets.find(x=>x.id===ticketId);
+    if (!t.comments) t.comments = [];
+    t.comments.push({ id: 'C' + Date.now().toString(36), author, text, createdAt: new Date().toISOString() });
+    t.updatedAt = new Date().toISOString();
+    textEl.value = '';
+    await persist();
+    populateNameDatalists();
+    renderActivityFeed(ticketId);
+  }
+
+  function renderAttachList(){
+    const wrap = $('#attachList'); wrap.innerHTML = '';
+    if (draftAttachments.length === 0){ wrap.appendChild(el('div','meta-note','No attachments added yet.')); return; }
+    draftAttachments.forEach((a, i) => {
+      const row = el('div','attach-row');
+      row.innerHTML = `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.name || a.url)}</a><span class="x" title="Remove">✕</span>`;
+      row.querySelector('.x').addEventListener('click', () => { draftAttachments.splice(i,1); renderAttachList(); });
+      wrap.appendChild(row);
+    });
+  }
+
+  function addAttachmentFromForm(){
+    const nameEl = $('#attachName'), urlEl = $('#attachUrl');
+    const url = urlEl.value.trim();
+    if (!url){ urlEl.focus(); return; }
+    draftAttachments.push({ name: nameEl.value.trim() || url, url });
+    nameEl.value = ''; urlEl.value = '';
+    renderAttachList();
+  }
+
+  function closeModal(){
+    $('#modalOverlay').style.display = 'none';
+    $('#modalOverlay').innerHTML = '';
+    editingId = null;
+    editingReleaseId = null;
+    if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+
+  async function saveTicket(){
+    const title = $('#f_title').value.trim();
+    if (!title){ $('#f_title').focus(); toast('Title is required'); return; }
+    const type = document.querySelector('input[name="type"]:checked').value;
+    const series = $('#f_series').value;
+    const now = new Date().toISOString();
+
+    if (editingId){
+      const t = data.tickets.find(x=>x.id===editingId);
+      const before = { status: t.status, assignee: t.assignee, release: t.release };
+      const newStatus = $('#f_status').value;
+      const newAssignee = $('#f_assignee').value.trim();
+      const newRelease = $('#f_release').value;
+
+      Object.assign(t, {
+        title, type, series,
+        description: $('#f_desc').value.trim(),
+        category: $('#f_category').value,
+        priority: $('#f_priority').value,
+        status: newStatus,
+        reporter: $('#f_reporter').value.trim(),
+        assignee: newAssignee,
+        product: $('#f_product').value.trim(),
+        fwVersion: $('#f_fw').value.trim(),
+        zendeskRef: $('#f_zendesk').value.trim(),
+        release: newRelease,
+        attachments: draftAttachments,
+        updatedAt: now,
+      });
+
+      if (before.status !== newStatus) logActivity(t, `Status changed from "${before.status}" to "${newStatus}"`);
+      if (before.assignee !== newAssignee) logActivity(t, `Assignee changed from "${before.assignee || 'unassigned'}" to "${newAssignee || 'unassigned'}"`);
+      if (before.release !== newRelease){
+        const oldV = before.release ? releaseVersionFor(before.release) : null;
+        const newV = newRelease ? releaseVersionFor(newRelease) : null;
+        logActivity(t, `Firmware release changed from ${oldV ? 'v'+oldV : 'backlog'} to ${newV ? 'v'+newV : 'backlog'}`);
+      }
+      toast('Ticket saved');
+    } else {
+      const newTicket = {
+        id: nextKey(series),
+        title, type, series,
+        description: $('#f_desc').value.trim(),
+        category: $('#f_category').value,
+        priority: $('#f_priority').value,
+        status: $('#f_status').value,
+        reporter: $('#f_reporter').value.trim(),
+        assignee: $('#f_assignee').value.trim(),
+        product: $('#f_product').value.trim(),
+        fwVersion: $('#f_fw').value.trim(),
+        zendeskRef: $('#f_zendesk').value.trim(),
+        release: $('#f_release').value,
+        attachments: draftAttachments,
+        comments: [],
+        activity: [],
+        createdAt: now, updatedAt: now,
+      };
+      data.tickets.push(newTicket);
+      toast('Ticket created: ' + newTicket.id);
+      if (series !== selectedSeries){ selectedSeries = series; }
+    }
+    await persist();
+    renderSidebar();
+    populateAssigneeFilter();
+    closeModal();
+    render();
+  }
+
+  async function deleteTicket(id){
+    if (!confirm('Permanently delete this ticket?')) return;
+    data.tickets = data.tickets.filter(t=>t.id!==id);
+    await persist();
+    renderSidebar();
+    populateAssigneeFilter();
+    closeModal();
+    render();
+    toast('Ticket deleted');
+  }
+
+  function exportJson(){
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'service-tickets-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+  }
+
+  // ---- Wiring ----
+  function setView(v){
+    view = v;
+    $('#viewKanbanBtn').classList.toggle('active', v==='kanban');
+    $('#viewListBtn').classList.toggle('active', v==='list');
+    $('#viewReleasesBtn').classList.toggle('active', v==='releases');
+    render();
+  }
+  $('#viewKanbanBtn').addEventListener('click', () => setView('kanban'));
+  $('#viewListBtn').addEventListener('click', () => setView('list'));
+  $('#viewReleasesBtn').addEventListener('click', () => setView('releases'));
+  $('#newTicketBtn').addEventListener('click', () => openModal(null));
+  $('#newReleaseBtn').addEventListener('click', () => openReleaseModal(null));
+  $('#exportBtn').addEventListener('click', exportJson);
+  $('#searchInput').addEventListener('input', e => { filters.search = e.target.value; render(); });
+  $('#filterType').addEventListener('change', e => { filters.type = e.target.value; render(); });
+  $('#filterCategory').addEventListener('change', e => { filters.category = e.target.value; render(); });
+  $('#filterPriority').addEventListener('change', e => { filters.priority = e.target.value; render(); });
+  $('#filterAssignee').addEventListener('change', e => { filters.assignee = e.target.value; render(); });
+  $('#clearFilters').addEventListener('click', () => {
+    filters = { search:'', type:'', category:'', priority:'', assignee:'' };
+    $('#searchInput').value=''; $('#filterType').value=''; $('#filterCategory').value='';
+    $('#filterPriority').value=''; $('#filterAssignee').value='';
+    render();
+  });
+
+  updateHeader();
+  loadData();
+})();
+</script>
+</body>
+</html>
