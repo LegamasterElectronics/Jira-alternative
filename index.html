@@ -291,11 +291,16 @@
   .attach-row { display: flex; gap: 6px; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px; }
   .attach-row a { font-size: 12.5px; color: var(--accent); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .attach-row .x { margin-left: auto; cursor: pointer; color: var(--ink-faint); font-size: 15px; line-height: 1; padding: 0 2px; }
-  .attach-add { display: flex; gap: 6px; }
-  .attach-upload-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .attach-upload-row .meta-note { margin-top: 0; }
-  .attach-add input { flex: 1; font-size: 12.5px; padding: 7px 9px; }
-  .attach-add button { padding: 7px 10px; font-size: 12px; }
+  .attach-big-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px; border: 1.5px dashed var(--border); border-radius: 10px;
+    background: var(--surface-2); color: var(--accent); font-size: 13.5px; font-weight: 700;
+    cursor: pointer; transition: background 0.12s, border-color 0.12s;
+  }
+  .attach-big-btn:hover { background: var(--type-fw-bg); border-color: var(--accent); }
+  .attach-big-btn:disabled { opacity: 0.6; cursor: default; }
+  .attach-big-btn-icon { font-size: 17px; line-height: 1; }
+  .attach-upload-hint { text-align: center; margin-top: 6px; }
 
   .modal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
   .meta-note { font-size: 11.5px; color: var(--ink-faint); margin-top: 3px; }
@@ -2247,16 +2252,12 @@
         <div class="field">
           <label>Attachments</label>
           <div class="attach-list" id="attachList"></div>
-          <div class="attach-upload-row">
-            <input type="file" id="attachFileInput" style="display:none;">
-            <button id="attachUploadBtn" class="ghost small" type="button">📎 Upload a file (max 8MB)</button>
-            <span class="meta-note" id="attachUploadStatus"></span>
-          </div>
-          <div class="attach-add">
-            <input type="text" id="attachName" placeholder="Or paste a link — name (e.g. touch-issue screenshot)">
-            <input type="url" id="attachUrl" placeholder="https://…">
-            <button id="attachAddBtn" type="button">Add link</button>
-          </div>
+          <input type="file" id="attachFileInput" multiple style="display:none;">
+          <button id="attachUploadBtn" class="attach-big-btn" type="button">
+            <span class="attach-big-btn-icon">＋</span>
+            <span>Add attachments</span>
+          </button>
+          <div class="meta-note attach-upload-hint" id="attachUploadStatus">Photos, screenshots, or files — up to 8MB each</div>
         </div>
 
         </div>
@@ -2306,9 +2307,8 @@
     }
 
     renderAttachList();
-    $('#attachAddBtn').addEventListener('click', addAttachmentFromForm);
     $('#attachUploadBtn').addEventListener('click', () => $('#attachFileInput').click());
-    $('#attachFileInput').addEventListener('change', (e) => handleFileUpload(e.target.files[0]));
+    $('#attachFileInput').addEventListener('change', (e) => handleFileUploads(Array.from(e.target.files)));
     $('#closeModalBtn').addEventListener('click', closeModal);
     $('#cancelBtn').addEventListener('click', closeModal);
     $('#saveBtn').addEventListener('click', saveTicket);
@@ -2392,38 +2392,35 @@
     });
   }
 
-  function addAttachmentFromForm(){
-    const nameEl = $('#attachName'), urlEl = $('#attachUrl');
-    const url = urlEl.value.trim();
-    if (!url){ urlEl.focus(); return; }
-    draftAttachments.push({ name: nameEl.value.trim() || url, url });
-    nameEl.value = ''; urlEl.value = '';
-    renderAttachList();
-  }
-
   const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
-  async function handleFileUpload(file){
+  async function handleFileUploads(files){
     const fileInput = $('#attachFileInput');
     const statusEl = $('#attachUploadStatus');
     const btn = $('#attachUploadBtn');
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_BYTES){
-      toast('File too large — max 8MB. Paste a link instead for bigger files.');
-      if (fileInput) fileInput.value = '';
-      return;
-    }
-    statusEl.textContent = 'Uploading ' + file.name + '…';
+    if (!files || files.length === 0) return;
+
+    const tooBig = files.filter(f => f.size > MAX_UPLOAD_BYTES);
+    const toUpload = files.filter(f => f.size <= MAX_UPLOAD_BYTES);
+    if (tooBig.length) toast(tooBig.length + ' file(s) skipped — over 8MB.');
+
     btn.disabled = true;
-    try {
-      const url = await apiUploadFile(file);
-      draftAttachments.push({ name: file.name, url });
-      renderAttachList();
-      toast('Uploaded ' + file.name);
-    } catch(err){
-      toast('Upload failed: ' + err.message);
+    let uploaded = 0, failed = 0;
+    for (let i = 0; i < toUpload.length; i++){
+      const file = toUpload[i];
+      statusEl.textContent = 'Uploading ' + (i+1) + '/' + toUpload.length + ': ' + file.name + '…';
+      try {
+        const url = await apiUploadFile(file);
+        draftAttachments.push({ name: file.name, url });
+        renderAttachList();
+        uploaded++;
+      } catch(err){
+        failed++;
+        toast('Failed to upload ' + file.name + ': ' + err.message);
+      }
     }
-    statusEl.textContent = '';
+    statusEl.textContent = 'Photos, screenshots, or files — up to 8MB each';
+    if (uploaded) toast(uploaded === 1 ? 'Uploaded 1 file' : 'Uploaded ' + uploaded + ' files');
     btn.disabled = false;
     if (fileInput) fileInput.value = '';
   }
