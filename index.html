@@ -796,13 +796,13 @@
         title:"Rename 'System Suspend Mode' to 'Quick Standby', move to Power settings",
         description:"Change \"System Suspend Mode\" to \"Quick Standby\" and move it to Power Settings under the main settings menu.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[],
-        comments:[ cm('Tom','Found fixed in 1.1.16.','2026-08-03') ], activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-08-03') },
+        comments:[ cm('Owen','Found fixed in 1.1.16.','2026-08-03') ], activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-08-03') },
 
       { id:'EVPD-04', series:'Evolve Dynamic and Pro', type:'Bug', category:'Software', priority:'Medium', status:'Done',
         title:"High Contrast Text / Anti Blue Light changes unrelated font elements",
         description:"After enabling High Contrast Text and Anti Blue Light, some font elements that shouldn't have changed changed.\n\nReproduced in person with DQA and PM.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[],
-        comments:[ cm('Tom','A second location where this occurs was discovered.','2026-07-13'), cm('Tom','Found fixed in 1.1.16.','2026-08-03') ],
+        comments:[ cm('Owen','A second location where this occurs was discovered.','2026-07-13'), cm('Owen','Found fixed in 1.1.16.','2026-08-03') ],
         activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-08-03') },
 
       { id:'EVPD-05', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
@@ -810,17 +810,17 @@
         description:"After renaming the signal source, the signal source in the main menu still displays the original name.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R2', attachments:[],
         comments:[
-          cm('Tom','Reproduced the bug in person for DQA.','2026-07-15'),
-          cm('Tom','Still not fixed in 1.1.16.','2026-07-28'),
-          cm('Tom','Will fix in 1.1.18.','2026-08-19'),
-          cm('Tom','Confirmed: will fix in 1.1.18.','2026-08-21'),
+          cm('Owen','Reproduced the bug in person for DQA.','2026-07-15'),
+          cm('Owen','Still not fixed in 1.1.16.','2026-07-28'),
+          cm('Owen','Will fix in 1.1.18.','2026-08-19'),
+          cm('Owen','Confirmed: will fix in 1.1.18.','2026-08-21'),
         ], activity:[], createdAt:d('2026-07-10'), updatedAt:d('2026-08-21') },
 
       { id:'EVPD-06', series:'Evolve Dynamic and Pro', type:'Bug', category:'Interoperability', priority:'Medium', status:'Done',
         title:"Unable to output 4K HDMI signal",
         description:"Unable to output 4K HDMI signal.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Tom','Verified: EVOLVE Pro output to EVOLVE Pro requires a reinforced HDMI cable — the standard cable only supports 1080p. EVOLVE Pro output to Discover 3 keeps detecting signal. Tom used a non-reinforced cable for the failed combinations. Still to clarify: (1) why a reinforced cable is needed, and (2) the root cause of the failure. DQA suspects it\'s related to the EDID format, but evidence is still needed.','2026-07-15') ],
+        comments:[ cm('Owen','Verified: EVOLVE Pro output to EVOLVE Pro requires a reinforced HDMI cable — the standard cable only supports 1080p. EVOLVE Pro output to Discover 3 keeps detecting signal. Tom used a non-reinforced cable for the failed combinations. Still to clarify: (1) why a reinforced cable is needed, and (2) the root cause of the failure. DQA suspects it\'s related to the EDID format, but evidence is still needed.','2026-07-15') ],
         activity:[], createdAt:d('2026-07-14'), updatedAt:d('2026-07-15') },
 
       { id:'EVPD-07', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Software', priority:'Medium', status:'In Progress',
@@ -828,11 +828,11 @@
         description:"Uploading files from the whiteboard to the cloud requires saving them locally first. This is redundant and consumes local storage space. Requirement: save directly to the cloud drive.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R3', attachments:[],
         comments:[
-          cm('Tom','Submitted to iPrima PM (she was on leave two days ago).','2026-07-16'),
-          cm('Tom','Plan to accomplish in the next version.','2026-07-21'),
-          cm('Tom','Will check.','2026-08-19'),
-          cm('Tom','Confirmed will be OK in 1.1.18.','2026-08-21'),
-          cm('Tom','Postponed to version 1.1.19.','2026-08-25'),
+          cm('Owen','Submitted to iPrima PM (she was on leave two days ago).','2026-07-16'),
+          cm('Owen','Plan to accomplish in the next version.','2026-07-21'),
+          cm('Owen','Will check.','2026-08-19'),
+          cm('Owen','Confirmed will be OK in 1.1.18.','2026-08-21'),
+          cm('Owen','Postponed to version 1.1.19.','2026-08-25'),
         ], activity:[], createdAt:d('2026-07-14'), updatedAt:d('2026-08-25') },
 
       { id:'EVPD-08', series:'Evolve Dynamic and Pro', type:'Bug', category:'Interoperability', priority:'Medium', status:'Done',
@@ -840,16 +840,16 @@
         description:"After registering the screen with the third-party management platform Intune, native app access was lost and apps could not be downloaded from the Google Play Store.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'', zendeskRef:'', release:'', attachments:[],
         comments:[
-          cm('Tom',"Don't have an Intune account to reproduce the issue yet.",'2026-07-30'),
-          cm('Tom','Tom provided an Intune account — awaiting testing.','2026-07-31'),
-          cm('Tom','Confirmed: this is by design.','2026-08-21'),
+          cm('Owen',"Don't have an Intune account to reproduce the issue yet.",'2026-07-30'),
+          cm('Owen','Tom provided an Intune account — awaiting testing.','2026-07-31'),
+          cm('Owen','Confirmed: this is by design.','2026-08-21'),
         ], activity:[], createdAt:d('2026-07-28'), updatedAt:d('2026-08-21') },
 
       { id:'EVPD-09', series:'Evolve Dynamic and Pro', type:'Bug', category:'Hardware', priority:'Medium', status:'Done',
         title:"Blue standby LEDs stay on when screen is powered off",
         description:"When the screen is off, it still shows 2 blue LEDs on.\n\nWorkaround found: disabling these 3 settings turns the LEDs off when the screen shuts down: 1. Wake on LAN, 2. Quick Standby, 3. Start up display by external device.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Tom',"Requested to move 'Start up display by external device' into the normal Power settings menu.",'2026-08-21') ],
+        comments:[ cm('Owen',"Requested to move 'Start up display by external device' into the normal Power settings menu.",'2026-08-21') ],
         activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-21') },
 
       { id:'EVPD-10', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
@@ -857,40 +857,40 @@
         description:"In 1.1.16, when Wake on LAN and Quick Standby are enabled simultaneously, Quick Standby becomes ineffective.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'R2', attachments:[],
         comments:[
-          cm('Tom','Will fix in 1.1.18.','2026-08-12'),
-          cm('Tom','RC5E has this issue too.','2026-08-14'),
-          cm('Tom','Confirmed: will fix in 1.1.18.','2026-08-21'),
+          cm('Owen','Will fix in 1.1.18.','2026-08-12'),
+          cm('Owen','RC5E has this issue too.','2026-08-14'),
+          cm('Owen','Confirmed: will fix in 1.1.18.','2026-08-21'),
         ], activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-21') },
 
       { id:'EVPD-11', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'Open',
         title:"Shutdown prompt keeps popping up after enabling sleep mode",
         description:"After activating sleep mode, a shutdown prompt keeps popping up.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Tom','Waiting for update.','2026-08-19') ], activity:[], createdAt:d('2026-08-14'), updatedAt:d('2026-08-19') },
+        comments:[ cm('Owen','Waiting for update.','2026-08-19') ], activity:[], createdAt:d('2026-08-14'), updatedAt:d('2026-08-19') },
 
       { id:'EVPD-12', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Open',
         title:"Move 'start display by external device' to normal Power settings menu",
         description:"'Start display by external device' change to the normal menu under Power settings.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'', zendeskRef:'', release:'', attachments:[],
         comments:[
-          cm('Tom','Converted from bug EVPD-09 into a feature request.','2026-08-24'),
-          cm('Tom','Waiting for reply.','2026-08-26'),
+          cm('Owen','Converted from bug EVPD-09 into a feature request.','2026-08-24'),
+          cm('Owen','Waiting for reply.','2026-08-26'),
         ], activity:[], createdAt:d('2026-08-24'), updatedAt:d('2026-08-26') },
 
       { id:'EVPD-13', series:'Evolve Dynamic and Pro', type:'Bug', category:'Hardware', priority:'Medium', status:'Open',
         title:"AUX audio very low; built-in speaker stops working on AUX unplug",
         description:"1. Audio input very low over AUX cable.\n2. When the AUX cable is plugged in, the external device plays sound; when the AUX cable is unplugged, the built-in speaker stops working.",
         reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Tom','Reproduced with DQA and submitted to Claire.','2026-08-25') ], activity:[], createdAt:d('2026-08-25'), updatedAt:d('2026-08-25') },
+        comments:[ cm('Owen','Reproduced with DQA and submitted to Claire.','2026-08-25') ], activity:[], createdAt:d('2026-08-25'), updatedAt:d('2026-08-25') },
 
       { id:'EV2-01', series:'Evolve 2', type:'Bug', category:'Firmware', priority:'Medium', status:'Done',
         title:"Swisscom network certificate imports to wrong location",
         description:"The customer wants to import the Swisscom network certificate into the root directory, but the current import location is incorrect and it will not take effect.",
         reporter:'Tom', assignee:'', product:'EVOLVE 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
         comments:[
-          cm('Tom','Contacted RC software engineer — he asked the customer for a video of the desired install location.','2026-07-15'),
-          cm('Tom','Submitted the video and description to R&D.','2026-07-28'),
-          cm('Tom',"Submitted Prima's response to the customer.",'2026-07-29'),
+          cm('Owen','Contacted RC software engineer — he asked the customer for a video of the desired install location.','2026-07-15'),
+          cm('Owen','Submitted the video and description to R&D.','2026-07-28'),
+          cm('Owen',"Submitted Prima's response to the customer.",'2026-07-29'),
         ], activity:[], createdAt:d('2026-07-15'), updatedAt:d('2026-07-29') },
 
       { id:'EV2-02', series:'Evolve 2', type:'Firmware request', category:'Software', priority:'Medium', status:'Done',
@@ -898,8 +898,8 @@
         description:"Request to make the signage display app in EVOLVE 2 firmware signed.",
         reporter:'Tom', assignee:'', product:'EVOLVE 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
         comments:[
-          cm('Tom','Submitted to Claire, provided the APK.','2026-07-28'),
-          cm('Tom','Provided the signed APK to Tom.','2026-07-29'),
+          cm('Owen','Submitted to Claire, provided the APK.','2026-07-28'),
+          cm('Owen','Provided the signed APK to Tom.','2026-07-29'),
         ], activity:[], createdAt:d('2026-07-28'), updatedAt:d('2026-07-29') },
 
       { id:'DISC3-01', series:'Discover 3', type:'Bug', category:'Interoperability', priority:'Medium', status:'In Review',
@@ -907,14 +907,14 @@
         description:"1. Unable to receive 4K HDMI signal.\n2. Keeps loading when switching signal sources.",
         reporter:'Tom', assignee:'', product:'Discover 3', fwVersion:'1.0.33', zendeskRef:'', release:'R4', attachments:[],
         comments:[
-          cm('Tom','Submitted info to CVTE.','2026-07-22'),
-          cm('Tom',"CVTE provided a new version — still can't receive 4K.",'2026-07-28'),
-          cm('Tom','CVTE provided another new version.','2026-07-31'),
-          cm('Tom','Provided logs to CVTE R&D.','2026-08-04'),
-          cm('Tom','Waiting for reply.','2026-08-19'),
-          cm('Tom','Received the serial port tool from CVTE.','2026-08-21'),
-          cm('Tom','Sent the latest log.','2026-08-25'),
-          cm('Tom','Tested in 1.0.34 with: dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,1 and dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,3 — 4K signal received successfully.','2026-08-27'),
+          cm('Owen','Submitted info to CVTE.','2026-07-22'),
+          cm('Owen',"CVTE provided a new version — still can't receive 4K.",'2026-07-28'),
+          cm('Owen','CVTE provided another new version.','2026-07-31'),
+          cm('Owen','Provided logs to CVTE R&D.','2026-08-04'),
+          cm('Owen','Waiting for reply.','2026-08-19'),
+          cm('Owen','Received the serial port tool from CVTE.','2026-08-21'),
+          cm('Owen','Sent the latest log.','2026-08-25'),
+          cm('Owen','Tested in 1.0.34 with: dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,1 and dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,3 — 4K signal received successfully.','2026-08-27'),
         ], activity:[], createdAt:d('2026-07-17'), updatedAt:d('2026-08-27') },
 
       { id:'DISC3-02', series:'Discover 3', type:'Bug', category:'Interoperability', priority:'Medium', status:'Blocked',
@@ -922,12 +922,12 @@
         description:"It is still invoked even after disabling the relevant setting.",
         reporter:'Tom', assignee:'', product:'Discover 3', fwVersion:'', zendeskRef:'', release:'R5', attachments:[],
         comments:[
-          cm('Tom','Submitted feature request to CVTE.','2026-08-12'),
-          cm('Tom','Reframed as a feature request: disable HDMI CLK when the product is manufactured.','2026-08-14'),
-          cm('Tom','Waiting for reply.','2026-08-17'),
-          cm('Tom','Waiting for reply.','2026-08-19'),
-          cm('Tom','Waiting for reply.','2026-08-25'),
-          cm('Tom','Waiting for 1.0.35.','2026-08-26'),
+          cm('Owen','Submitted feature request to CVTE.','2026-08-12'),
+          cm('Owen','Reframed as a feature request: disable HDMI CLK when the product is manufactured.','2026-08-14'),
+          cm('Owen','Waiting for reply.','2026-08-17'),
+          cm('Owen','Waiting for reply.','2026-08-19'),
+          cm('Owen','Waiting for reply.','2026-08-25'),
+          cm('Owen','Waiting for 1.0.35.','2026-08-26'),
         ], activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-26') },
 
       { id:'EXP-01', series:'Explore', type:'Bug', category:'Hardware', priority:'Medium', status:'In Progress',
@@ -935,9 +935,9 @@
         description:"In standby mode, only HDMI port 1 can wake the device, and the cable must be unplugged and plugged back in. Powering on via an HDMI source will not wake the device. HDMI ports 2 and 3 also cannot wake the device.",
         reporter:'Tom', assignee:'', product:'Explore 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
         comments:[
-          cm('Tom','Waiting for update.','2026-08-19'),
-          cm('Tom','Confirmed: ports 2 & 3 not waking the device is by design.','2026-08-26'),
-          cm('Tom',"Still need to find why powering on via an HDMI source doesn't wake the screen.",'2026-08-26'),
+          cm('Owen','Waiting for update.','2026-08-19'),
+          cm('Owen','Confirmed: ports 2 & 3 not waking the device is by design.','2026-08-26'),
+          cm('Owen',"Still need to find why powering on via an HDMI source doesn't wake the screen.",'2026-08-26'),
         ], activity:[], createdAt:d('2026-08-14'), updatedAt:d('2026-08-26') },
 
       { id:'GEN-01', series:'General projects', type:'Firmware request', category:'Interoperability', priority:'High', status:'In Progress',
@@ -945,17 +945,17 @@
         description:"Extract parameters from one registered machine and distribute them to other machines through the Xyte platform.",
         reporter:'Tom', assignee:'', product:'', fwVersion:'', zendeskRef:'', release:'', attachments:[],
         comments:[
-          cm('Tom','Awaiting Marcos to provide the needed extraction parameters to determine the cooperation method.','2026-08-03'),
-          cm('Tom','All settings and apps now support upload.','2026-08-19'),
-          cm('Tom','Marcos will provide the list.','2026-08-19'),
-          cm('Tom','List provided.','2026-08-25'),
+          cm('Owen','Awaiting Marcos to provide the needed extraction parameters to determine the cooperation method.','2026-08-03'),
+          cm('Owen','All settings and apps now support upload.','2026-08-19'),
+          cm('Owen','Marcos will provide the list.','2026-08-19'),
+          cm('Owen','List provided.','2026-08-25'),
         ], activity:[], createdAt:d('2026-08-03'), updatedAt:d('2026-08-25') },
 
       { id:'GEN-02', series:'General projects', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
         title:"Shutdown prompt timing wrong on power button (coreone)",
         description:"The shutdown prompt only appears after pressing and releasing the power button. Requested: it should appear during the power button press, like on other models.",
         reporter:'Tom', assignee:'', product:'', fwVersion:'coreone', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Tom','Will fix in the next coreone version.','2026-08-21') ], activity:[], createdAt:d('2026-08-21'), updatedAt:d('2026-08-21') },
+        comments:[ cm('Owen','Will fix in the next coreone version.','2026-08-21') ], activity:[], createdAt:d('2026-08-21'), updatedAt:d('2026-08-21') },
     ];
 
     const seriesCounters = { 'Evolve Dynamic and Pro':13, 'Evolve 2':2, 'Explore':1, 'Discover 3':2, 'General projects':2 };
@@ -1017,6 +1017,16 @@
         if (t.assignee && t.assignee === SERIES_MANUFACTURER[t.series]) t.assignee = '';
       });
       data.manufacturerFieldCleared = true;
+      needsPersist = true;
+    }
+
+    // One-time correction: the imported Excel progress notes were attributed to Tom,
+    // but Owen was the one who actually said them.
+    if (!data.importedCommentsAttributedToOwen){
+      data.tickets.forEach(t => {
+        (t.comments||[]).forEach(c => { if (c.author === 'Tom') c.author = 'Owen'; });
+      });
+      data.importedCommentsAttributedToOwen = true;
       needsPersist = true;
     }
 
