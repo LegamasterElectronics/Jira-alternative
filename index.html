@@ -342,7 +342,18 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
 
-  .loading-wrap { display: flex; align-items: center; justify-content: center; padding: 80px 0; color: var(--ink-muted); font-size: 13.5px; }
+  .global-loading {
+    position: fixed; inset: 0; z-index: 200; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    color: var(--ink-muted); font-size: 13.5px; text-align: center; padding: 24px;
+  }
+  .global-loading #globalLoadingText { max-width: 420px; }
+  .spinner {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   ::placeholder { color: var(--ink-faint); }
 
   @media (max-width: 760px) {
@@ -355,6 +366,10 @@
 </style>
 </head>
 <body>
+<div id="globalLoading" class="global-loading">
+  <div class="spinner"></div>
+  <div id="globalLoadingText">Loading service tracker…</div>
+</div>
 <div class="layout" id="appRoot" style="display:none;">
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-title">Series</div>
@@ -397,7 +412,6 @@
       <span class="clear" id="clearFilters">Clear filters</span>
     </div>
 
-    <div id="loading" class="loading-wrap">Loading tickets…</div>
     <div id="boardView" class="board" style="display:none;"></div>
     <div id="listView" style="display:none;"></div>
     <div id="releasesView" class="releases-wrap" style="display:none;"></div>
@@ -420,10 +434,17 @@
 (function(){
   // Google Apps Script Web App URL — the shared backend (a Google Sheet). Deploy the accompanying
   // .gs script and paste the resulting /exec URL here. See the setup guide for step-by-step instructions.
-  const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzuukZoIvmCa3MtjiUwYML3fAyhyPe-QM-LXwdFe2xPPj18IZG9l0ls1LHuI-IE_P29/exec';
+  const GOOGLE_SHEETS_API_URL = 'PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE';
+
+  function withTimeout(promise, ms, label){
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(label + ' timed out')), ms)),
+    ]);
+  }
 
   async function apiGetAll(){
-    const res = await fetch(GOOGLE_SHEETS_API_URL + '?action=getAll');
+    const res = await withTimeout(fetch(GOOGLE_SHEETS_API_URL + '?action=getAll'), 10000, 'Load');
     if (!res.ok) throw new Error('Load failed (' + res.status + ')');
     const json = await res.json();
     if (json && json.error) throw new Error(json.error);
@@ -431,15 +452,17 @@
   }
 
   async function apiSaveAll(payload){
-    const res = await fetch(GOOGLE_SHEETS_API_URL, {
+    // Apps Script POST requests go through an internal Google redirect that sometimes gets
+    // blocked by the browser's CORS check even though the write itself would succeed server-side.
+    // 'no-cors' sidesteps that: the request still reaches the script and the sheet still gets
+    // written, we just can't read the response back (so we can't confirm success from the body —
+    // only that the request didn't fail outright, e.g. wrong URL or no network).
+    await withTimeout(fetch(GOOGLE_SHEETS_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids a CORS preflight Apps Script can't handle
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveAll', payload }),
-    });
-    if (!res.ok) throw new Error('Save failed (' + res.status + ')');
-    const json = await res.json();
-    if (json && json.error) throw new Error(json.error);
-    return json;
+    }), 10000, 'Save');
   }
 
   // Personal, per-browser settings (name, password gate, notification checkpoint) — now that this
@@ -1622,11 +1645,21 @@
     return true;
   }
 
+  function hideGlobalLoading(){
+    const el = $('#globalLoading');
+    if (el) el.style.display = 'none';
+  }
+  function showGlobalLoadingError(msg){
+    const spinner = document.querySelector('#globalLoading .spinner');
+    if (spinner) spinner.style.display = 'none';
+    $('#globalLoadingText').textContent = msg;
+  }
+
   async function loadData(){
     let needsPersist = false;
 
     if (GOOGLE_SHEETS_API_URL === 'PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE'){
-      $('#loading').textContent = 'Setup needed: GOOGLE_SHEETS_API_URL hasn\u2019t been set in the code yet. See the setup guide.';
+      showGlobalLoadingError('Setup needed: GOOGLE_SHEETS_API_URL hasn\u2019t been set in the code yet. See the setup guide.');
       return;
     }
 
@@ -1643,7 +1676,7 @@
       data.tickets = data.tickets.map(migrateLegacy);
       if (migrateTicketIds()) needsPersist = true;
     } catch(e) {
-      $('#loading').textContent = 'Could not reach the shared sheet (' + e.message + '). Check GOOGLE_SHEETS_API_URL and that the Apps Script is deployed with "Anyone" access, then reload.';
+      showGlobalLoadingError('Could not reach the shared sheet (' + e.message + '). Check GOOGLE_SHEETS_API_URL and that the Apps Script is deployed with "Anyone" access, then reload.');
       return;
     }
 
@@ -1679,7 +1712,7 @@
     }
 
     if (needsPersist) await persist();
-    $('#loading').style.display = 'none';
+    hideGlobalLoading();
 
     await ensureAccess();
 
@@ -2064,7 +2097,7 @@
       data.releases.push({ id: nextReleaseId(), series: selectedSeries, version, targetDate: $('#r_date').value, status: $('#r_status').value, downloadUrl, notes: $('#r_notes').value.trim(), createdAt: now, updatedAt: now });
       toast('Release created');
     }
-    await persist();
+    persist(); // fire-and-forget — never block the UI on the network; failures still toast
     closeModal();
     render();
   }
@@ -2079,7 +2112,7 @@
         logActivity(t, `Firmware release v${rel ? rel.version : '?'} was deleted — ticket moved back to backlog`);
       }
     });
-    await persist();
+    persist(); // fire-and-forget — never block the UI on the network; failures still toast
     closeModal();
     render();
     toast('Release deleted');
@@ -2307,7 +2340,7 @@
     t.comments.push({ id: 'C' + Date.now().toString(36), author, text, createdAt: new Date().toISOString() });
     t.updatedAt = new Date().toISOString();
     textEl.value = '';
-    await persist();
+    persist(); // fire-and-forget — never block the UI on the network; failures still toast
     populateNameDatalists();
     renderActivityFeed(ticketId);
   }
@@ -2401,7 +2434,7 @@
       toast('Ticket created: ' + newTicket.id);
       if (series !== selectedSeries){ selectedSeries = series; }
     }
-    await persist();
+    persist(); // fire-and-forget — never block the UI on the network; failures still toast
     renderSidebar();
     populateAssigneeFilter();
     closeModal();
@@ -2411,7 +2444,7 @@
   async function deleteTicket(id){
     if (!confirm('Permanently delete this ticket?')) return;
     data.tickets = data.tickets.filter(t=>t.id!==id);
-    await persist();
+    persist(); // fire-and-forget — never block the UI on the network; failures still toast
     renderSidebar();
     populateAssigneeFilter();
     closeModal();
@@ -2459,7 +2492,11 @@
   });
 
   updateHeader();
-  loadData();
+  const slowLoadTimer = setTimeout(() => {
+    const el = $('#globalLoadingText');
+    if (el) el.textContent = 'Still loading — the shared sheet can take a few seconds, especially the first time.';
+  }, 3000);
+  loadData().finally(() => clearTimeout(slowLoadTimer));
 })();
 </script>
 </body>
