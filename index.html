@@ -418,6 +418,35 @@
 
 <script>
 (function(){
+  // Google Apps Script Web App URL — the shared backend (a Google Sheet). Deploy the accompanying
+  // .gs script and paste the resulting /exec URL here. See the setup guide for step-by-step instructions.
+  const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzuukZoIvmCa3MtjiUwYML3fAyhyPe-QM-LXwdFe2xPPj18IZG9l0ls1LHuI-IE_P29/exec';
+
+  async function apiGetAll(){
+    const res = await fetch(GOOGLE_SHEETS_API_URL + '?action=getAll');
+    if (!res.ok) throw new Error('Load failed (' + res.status + ')');
+    const json = await res.json();
+    if (json && json.error) throw new Error(json.error);
+    return json;
+  }
+
+  async function apiSaveAll(payload){
+    const res = await fetch(GOOGLE_SHEETS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids a CORS preflight Apps Script can't handle
+      body: JSON.stringify({ action: 'saveAll', payload }),
+    });
+    if (!res.ok) throw new Error('Save failed (' + res.status + ')');
+    const json = await res.json();
+    if (json && json.error) throw new Error(json.error);
+    return json;
+  }
+
+  // Personal, per-browser settings (name, password gate, notification checkpoint) — now that this
+  // runs as a normal webpage rather than inside a Claude artifact, plain localStorage is the right tool.
+  function lsGet(key){ try { return localStorage.getItem(key); } catch(e){ return null; } }
+  function lsSet(key, value){ try { localStorage.setItem(key, value); } catch(e){ /* private browsing etc. — non-fatal */ } }
+
   const STORE_KEY = 'tracker-data';
   const SERIES = ['Evolve Dynamic and Pro','Evolve 2','Explore','Discover 3','General projects'];
   const SERIES_PREFIX = {
@@ -524,20 +553,16 @@
   }
 
   async function loadNotifState(){
-    try {
-      const res = await window.storage.get('notif-last-seen', false);
-      if (res && res.value){ notifLastSeen = res.value; return; }
-    } catch(e) { /* not set yet */ }
+    const v = lsGet('notif-last-seen');
+    if (v){ notifLastSeen = v; return; }
     // First time this user has been in: start clean rather than flooding them with all historic activity.
     notifLastSeen = new Date().toISOString();
-    try { await window.storage.set('notif-last-seen', notifLastSeen, false); } catch(e) { /* best effort */ }
+    lsSet('notif-last-seen', notifLastSeen);
   }
 
   async function pollNotifications(){
     try {
-      const res = await window.storage.get(STORE_KEY, true);
-      if (!res || !res.value) return;
-      const remote = JSON.parse(res.value);
+      const remote = await apiGetAll();
       notifEvents = collectEvents(remote.tickets)
         .filter(e => e.createdAt > notifLastSeen)
         .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -577,7 +602,7 @@
 
   async function markNotificationsRead(){
     notifLastSeen = new Date().toISOString();
-    try { await window.storage.set('notif-last-seen', notifLastSeen, false); } catch(e) { /* best effort */ }
+    lsSet('notif-last-seen', notifLastSeen);
     notifEvents = [];
     renderNotifBadge();
     renderNotifPanel();
@@ -585,14 +610,11 @@
 
   async function refreshDataFromStorage(){
     try {
-      const res = await window.storage.get(STORE_KEY, true);
-      if (res && res.value){
-        const fresh = JSON.parse(res.value);
-        if (Array.isArray(fresh.tickets)) data.tickets = fresh.tickets.map(migrateLegacy);
-        if (Array.isArray(fresh.releases)){ fresh.releases.forEach(r=>{ if(r.downloadUrl===undefined) r.downloadUrl=''; }); data.releases = fresh.releases; }
-        if (fresh.seriesCounters) data.seriesCounters = fresh.seriesCounters;
-        if (typeof fresh.releaseCounter === 'number') data.releaseCounter = fresh.releaseCounter;
-      }
+      const fresh = await apiGetAll();
+      if (Array.isArray(fresh.tickets)) data.tickets = fresh.tickets.map(migrateLegacy);
+      if (Array.isArray(fresh.releases)){ fresh.releases.forEach(r=>{ if(r.downloadUrl===undefined) r.downloadUrl=''; }); data.releases = fresh.releases; }
+      if (fresh.seriesCounters) data.seriesCounters = fresh.seriesCounters;
+      if (typeof fresh.releaseCounter === 'number') data.releaseCounter = fresh.releaseCounter;
     } catch(e) { /* keep current data if this fails */ }
   }
 
@@ -670,10 +692,8 @@
           return;
         }
         currentUser = name;
-        try {
-          await window.storage.set('gate-passed', 'true', false);
-          await window.storage.set('my-name', name, false);
-        } catch(e) { /* best effort — not critical if this fails */ }
+        lsSet('gate-passed', 'true');
+        lsSet('my-name', name);
         overlay.style.display = 'none';
         overlay.innerHTML = '';
         resolve();
@@ -690,15 +710,9 @@
   }
 
   async function ensureAccess(){
-    let hasPassword = false, knownName = '';
-    try {
-      const res = await window.storage.get('gate-passed', false);
-      if (res && res.value === 'true') hasPassword = true;
-    } catch(e) { /* not passed yet on this device — expected */ }
-    try {
-      const res = await window.storage.get('my-name', false);
-      if (res && res.value){ knownName = res.value; currentUser = res.value; }
-    } catch(e) { /* not set yet — expected on first use */ }
+    const hasPassword = lsGet('gate-passed') === 'true';
+    const knownName = lsGet('my-name') || '';
+    if (knownName) currentUser = knownName;
     if (hasPassword && knownName) return;
     await showEntryGate(knownName);
   }
@@ -733,7 +747,7 @@
         const name = (rawName || '').trim();
         if (!name){ $('#login_name').focus(); toast('Please enter a name'); return; }
         currentUser = name;
-        try { await window.storage.set('my-name', name, false); } catch(e){ /* best effort — not critical if this fails */ }
+        lsSet('my-name', name);
         overlay.style.display = 'none';
         overlay.innerHTML = '';
         resolve();
@@ -774,194 +788,819 @@
   function cm(author, text, dateStr){ return { id:'C'+Math.random().toString(36).slice(2,8), author, text, createdAt:d(dateStr) }; }
 
   // Real issue data imported from the team's Excel tracker (replaces the earlier example tickets).
+  // Exact snapshot of the live board (exported 2026-08-28), used as the starting data
+  // when the Google Sheet is empty. This replaces the original hand-typed Excel import
+  // now that the live board is the source of truth.
   function buildRealIssueImport(){
-    const releases = [
-      { id:'R1', series:'Evolve Dynamic and Pro', version:'1.1.16', targetDate:'2026-08-07', status:'Released', downloadUrl:'', notes:'Batch of feature requests and bug fixes merged for release.', createdAt:d('2026-07-02'), updatedAt:d('2026-08-03') },
-      { id:'R2', series:'Evolve Dynamic and Pro', version:'1.1.18', targetDate:'', status:'In Progress', downloadUrl:'', notes:'', createdAt:d('2026-08-19'), updatedAt:d('2026-08-21') },
-      { id:'R3', series:'Evolve Dynamic and Pro', version:'1.1.19', targetDate:'', status:'Planned', downloadUrl:'', notes:'Postponed from 1.1.18.', createdAt:d('2026-08-19'), updatedAt:d('2026-08-25') },
-      { id:'R4', series:'Discover 3', version:'1.0.34', targetDate:'', status:'In Progress', downloadUrl:'', notes:'HDMI EDID version fix — confirmed working via serial commands, pending formal rollout.', createdAt:d('2026-08-04'), updatedAt:d('2026-08-27') },
-      { id:'R5', series:'Discover 3', version:'1.0.35', targetDate:'', status:'Planned', downloadUrl:'', notes:'', createdAt:d('2026-08-12'), updatedAt:d('2026-08-26') },
-    ];
-
     const tickets = [
-      { id:'EVPD-01', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Done',
-        title:"Add safe mode, clear-browser-data toggles to match other models",
-        description:"The new version adds the following three features that are already available on other models and that users are accustomed to: Safe mode on/off, Clear browser data on/off, Auto clear browser data.\n\nProgress: five feature requests and two bugs were merged into a new version, expected for release around August 7. After Legamaster testing, Prima uploads it to Xyte.\n\nNote: modifications are typically synchronized across four versions (SA5E-EL and SA5E-PL: 1.1.1x and 1.2.x). Versions starting with 1.2.x are firmware for newer motherboards.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'', attachments:[], comments:[], activity:[], createdAt:d('2026-07-02'), updatedAt:d('2026-08-03') },
-
-      { id:'EVPD-02', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Done',
-        title:"Replace Auto Loop with a No-Signal-Switch dropdown",
-        description:"Change Auto loop to No signal switch, add a drop-down menu to select the signal source, and Android set as the final destination.\n\nDesign note: Android becomes the fourth item in the list; when actually performing a loop query, Android is the last destination.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[], comments:[], activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-07-07') },
-
-      { id:'EVPD-03', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Done',
-        title:"Rename 'System Suspend Mode' to 'Quick Standby', move to Power settings",
-        description:"Change \"System Suspend Mode\" to \"Quick Standby\" and move it to Power Settings under the main settings menu.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[],
-        comments:[ cm('Owen','Found fixed in 1.1.16.','2026-08-03') ], activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-08-03') },
-
-      { id:'EVPD-04', series:'Evolve Dynamic and Pro', type:'Bug', category:'Software', priority:'Medium', status:'Done',
-        title:"High Contrast Text / Anti Blue Light changes unrelated font elements",
-        description:"After enabling High Contrast Text and Anti Blue Light, some font elements that shouldn't have changed changed.\n\nReproduced in person with DQA and PM.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R1', attachments:[],
-        comments:[ cm('Owen','A second location where this occurs was discovered.','2026-07-13'), cm('Owen','Found fixed in 1.1.16.','2026-08-03') ],
-        activity:[], createdAt:d('2026-07-07'), updatedAt:d('2026-08-03') },
-
-      { id:'EVPD-05', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
-        title:"Renamed signal source still shows old name in main menu",
-        description:"After renaming the signal source, the signal source in the main menu still displays the original name.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R2', attachments:[],
-        comments:[
-          cm('Owen','Reproduced the bug in person for DQA.','2026-07-15'),
-          cm('Owen','Still not fixed in 1.1.16.','2026-07-28'),
-          cm('Owen','Will fix in 1.1.18.','2026-08-19'),
-          cm('Owen','Confirmed: will fix in 1.1.18.','2026-08-21'),
-        ], activity:[], createdAt:d('2026-07-10'), updatedAt:d('2026-08-21') },
-
-      { id:'EVPD-06', series:'Evolve Dynamic and Pro', type:'Bug', category:'Interoperability', priority:'Medium', status:'Done',
-        title:"Unable to output 4K HDMI signal",
-        description:"Unable to output 4K HDMI signal.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Owen','Verified: EVOLVE Pro output to EVOLVE Pro requires a reinforced HDMI cable — the standard cable only supports 1080p. EVOLVE Pro output to Discover 3 keeps detecting signal. Tom used a non-reinforced cable for the failed combinations. Still to clarify: (1) why a reinforced cable is needed, and (2) the root cause of the failure. DQA suspects it\'s related to the EDID format, but evidence is still needed.','2026-07-15') ],
-        activity:[], createdAt:d('2026-07-14'), updatedAt:d('2026-07-15') },
-
-      { id:'EVPD-07', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Software', priority:'Medium', status:'In Progress',
-        title:"Whiteboard cloud upload requires saving locally first",
-        description:"Uploading files from the whiteboard to the cloud requires saving them locally first. This is redundant and consumes local storage space. Requirement: save directly to the cloud drive.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.14', zendeskRef:'', release:'R3', attachments:[],
-        comments:[
-          cm('Owen','Submitted to iPrima PM (she was on leave two days ago).','2026-07-16'),
-          cm('Owen','Plan to accomplish in the next version.','2026-07-21'),
-          cm('Owen','Will check.','2026-08-19'),
-          cm('Owen','Confirmed will be OK in 1.1.18.','2026-08-21'),
-          cm('Owen','Postponed to version 1.1.19.','2026-08-25'),
-        ], activity:[], createdAt:d('2026-07-14'), updatedAt:d('2026-08-25') },
-
-      { id:'EVPD-08', series:'Evolve Dynamic and Pro', type:'Bug', category:'Interoperability', priority:'Medium', status:'Done',
-        title:"Intune registration blocks native apps and Play Store access",
-        description:"After registering the screen with the third-party management platform Intune, native app access was lost and apps could not be downloaded from the Google Play Store.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'', zendeskRef:'', release:'', attachments:[],
-        comments:[
-          cm('Owen',"Don't have an Intune account to reproduce the issue yet.",'2026-07-30'),
-          cm('Owen','Tom provided an Intune account — awaiting testing.','2026-07-31'),
-          cm('Owen','Confirmed: this is by design.','2026-08-21'),
-        ], activity:[], createdAt:d('2026-07-28'), updatedAt:d('2026-08-21') },
-
-      { id:'EVPD-09', series:'Evolve Dynamic and Pro', type:'Bug', category:'Hardware', priority:'Medium', status:'Done',
-        title:"Blue standby LEDs stay on when screen is powered off",
-        description:"When the screen is off, it still shows 2 blue LEDs on.\n\nWorkaround found: disabling these 3 settings turns the LEDs off when the screen shuts down: 1. Wake on LAN, 2. Quick Standby, 3. Start up display by external device.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Owen',"Requested to move 'Start up display by external device' into the normal Power settings menu.",'2026-08-21') ],
-        activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-21') },
-
-      { id:'EVPD-10', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
-        title:"Quick Standby ineffective when Wake on LAN is also enabled",
-        description:"In 1.1.16, when Wake on LAN and Quick Standby are enabled simultaneously, Quick Standby becomes ineffective.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'R2', attachments:[],
-        comments:[
-          cm('Owen','Will fix in 1.1.18.','2026-08-12'),
-          cm('Owen','RC5E has this issue too.','2026-08-14'),
-          cm('Owen','Confirmed: will fix in 1.1.18.','2026-08-21'),
-        ], activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-21') },
-
-      { id:'EVPD-11', series:'Evolve Dynamic and Pro', type:'Bug', category:'Firmware', priority:'Medium', status:'Open',
-        title:"Shutdown prompt keeps popping up after enabling sleep mode",
-        description:"After activating sleep mode, a shutdown prompt keeps popping up.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Owen','Waiting for update.','2026-08-19') ], activity:[], createdAt:d('2026-08-14'), updatedAt:d('2026-08-19') },
-
-      { id:'EVPD-12', series:'Evolve Dynamic and Pro', type:'Firmware request', category:'Firmware', priority:'Medium', status:'Open',
-        title:"Move 'start display by external device' to normal Power settings menu",
-        description:"'Start display by external device' change to the normal menu under Power settings.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'', zendeskRef:'', release:'', attachments:[],
-        comments:[
-          cm('Owen','Converted from bug EVPD-09 into a feature request.','2026-08-24'),
-          cm('Owen','Waiting for reply.','2026-08-26'),
-        ], activity:[], createdAt:d('2026-08-24'), updatedAt:d('2026-08-26') },
-
-      { id:'EVPD-13', series:'Evolve Dynamic and Pro', type:'Bug', category:'Hardware', priority:'Medium', status:'Open',
-        title:"AUX audio very low; built-in speaker stops working on AUX unplug",
-        description:"1. Audio input very low over AUX cable.\n2. When the AUX cable is plugged in, the external device plays sound; when the AUX cable is unplugged, the built-in speaker stops working.",
-        reporter:'Tom', assignee:'', product:'EVOLVE Pro', fwVersion:'1.1.16', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Owen','Reproduced with DQA and submitted to Claire.','2026-08-25') ], activity:[], createdAt:d('2026-08-25'), updatedAt:d('2026-08-25') },
-
-      { id:'EV2-01', series:'Evolve 2', type:'Bug', category:'Firmware', priority:'Medium', status:'Done',
-        title:"Swisscom network certificate imports to wrong location",
-        description:"The customer wants to import the Swisscom network certificate into the root directory, but the current import location is incorrect and it will not take effect.",
-        reporter:'Tom', assignee:'', product:'EVOLVE 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
-        comments:[
-          cm('Owen','Contacted RC software engineer — he asked the customer for a video of the desired install location.','2026-07-15'),
-          cm('Owen','Submitted the video and description to R&D.','2026-07-28'),
-          cm('Owen',"Submitted Prima's response to the customer.",'2026-07-29'),
-        ], activity:[], createdAt:d('2026-07-15'), updatedAt:d('2026-07-29') },
-
-      { id:'EV2-02', series:'Evolve 2', type:'Firmware request', category:'Software', priority:'Medium', status:'Done',
-        title:"Sign the EVOLVE 2 signage display app",
-        description:"Request to make the signage display app in EVOLVE 2 firmware signed.",
-        reporter:'Tom', assignee:'', product:'EVOLVE 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
-        comments:[
-          cm('Owen','Submitted to Claire, provided the APK.','2026-07-28'),
-          cm('Owen','Provided the signed APK to Tom.','2026-07-29'),
-        ], activity:[], createdAt:d('2026-07-28'), updatedAt:d('2026-07-29') },
-
-      { id:'DISC3-01', series:'Discover 3', type:'Bug', category:'Interoperability', priority:'Medium', status:'In Review',
-        title:"Can't receive 4K HDMI signal; stuck loading when switching sources",
-        description:"1. Unable to receive 4K HDMI signal.\n2. Keeps loading when switching signal sources.",
-        reporter:'Tom', assignee:'', product:'Discover 3', fwVersion:'1.0.33', zendeskRef:'', release:'R4', attachments:[],
-        comments:[
-          cm('Owen','Submitted info to CVTE.','2026-07-22'),
-          cm('Owen',"CVTE provided a new version — still can't receive 4K.",'2026-07-28'),
-          cm('Owen','CVTE provided another new version.','2026-07-31'),
-          cm('Owen','Provided logs to CVTE R&D.','2026-08-04'),
-          cm('Owen','Waiting for reply.','2026-08-19'),
-          cm('Owen','Received the serial port tool from CVTE.','2026-08-21'),
-          cm('Owen','Sent the latest log.','2026-08-25'),
-          cm('Owen','Tested in 1.0.34 with: dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,1 and dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,3 — 4K signal received successfully.','2026-08-27'),
-        ], activity:[], createdAt:d('2026-07-17'), updatedAt:d('2026-08-27') },
-
-      { id:'DISC3-02', series:'Discover 3', type:'Bug', category:'Interoperability', priority:'Medium', status:'Blocked',
-        title:"HDMI CLK still active even after disabling related setting",
-        description:"It is still invoked even after disabling the relevant setting.",
-        reporter:'Tom', assignee:'', product:'Discover 3', fwVersion:'', zendeskRef:'', release:'R5', attachments:[],
-        comments:[
-          cm('Owen','Submitted feature request to CVTE.','2026-08-12'),
-          cm('Owen','Reframed as a feature request: disable HDMI CLK when the product is manufactured.','2026-08-14'),
-          cm('Owen','Waiting for reply.','2026-08-17'),
-          cm('Owen','Waiting for reply.','2026-08-19'),
-          cm('Owen','Waiting for reply.','2026-08-25'),
-          cm('Owen','Waiting for 1.0.35.','2026-08-26'),
-        ], activity:[], createdAt:d('2026-08-12'), updatedAt:d('2026-08-26') },
-
-      { id:'EXP-01', series:'Explore', type:'Bug', category:'Hardware', priority:'Medium', status:'In Progress',
-        title:"Standby wake only works via HDMI port 1",
-        description:"In standby mode, only HDMI port 1 can wake the device, and the cable must be unplugged and plugged back in. Powering on via an HDMI source will not wake the device. HDMI ports 2 and 3 also cannot wake the device.",
-        reporter:'Tom', assignee:'', product:'Explore 2', fwVersion:'', zendeskRef:'', release:'', attachments:[],
-        comments:[
-          cm('Owen','Waiting for update.','2026-08-19'),
-          cm('Owen','Confirmed: ports 2 & 3 not waking the device is by design.','2026-08-26'),
-          cm('Owen',"Still need to find why powering on via an HDMI source doesn't wake the screen.",'2026-08-26'),
-        ], activity:[], createdAt:d('2026-08-14'), updatedAt:d('2026-08-26') },
-
-      { id:'GEN-01', series:'General projects', type:'Firmware request', category:'Interoperability', priority:'High', status:'In Progress',
-        title:"Extract & distribute device parameters via Xyte platform",
-        description:"Extract parameters from one registered machine and distribute them to other machines through the Xyte platform.",
-        reporter:'Tom', assignee:'', product:'', fwVersion:'', zendeskRef:'', release:'', attachments:[],
-        comments:[
-          cm('Owen','Awaiting Marcos to provide the needed extraction parameters to determine the cooperation method.','2026-08-03'),
-          cm('Owen','All settings and apps now support upload.','2026-08-19'),
-          cm('Owen','Marcos will provide the list.','2026-08-19'),
-          cm('Owen','List provided.','2026-08-25'),
-        ], activity:[], createdAt:d('2026-08-03'), updatedAt:d('2026-08-25') },
-
-      { id:'GEN-02', series:'General projects', type:'Bug', category:'Firmware', priority:'Medium', status:'In Progress',
-        title:"Shutdown prompt timing wrong on power button (coreone)",
-        description:"The shutdown prompt only appears after pressing and releasing the power button. Requested: it should appear during the power button press, like on other models.",
-        reporter:'Tom', assignee:'', product:'', fwVersion:'coreone', zendeskRef:'', release:'', attachments:[],
-        comments:[ cm('Owen','Will fix in the next coreone version.','2026-08-21') ], activity:[], createdAt:d('2026-08-21'), updatedAt:d('2026-08-21') },
-    ];
-
-    const seriesCounters = { 'Evolve Dynamic and Pro':13, 'Evolve 2':2, 'Explore':1, 'Discover 3':2, 'General projects':2 };
-    return { tickets, releases, seriesCounters, releaseCounter: 5 };
+  {
+    "id": "EVPD-01",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Firmware request",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Add safe mode, clear-browser-data toggles to match other models",
+    "description": "The new version adds the following three features that are already available on other models and that users are accustomed to: Safe mode on/off, Clear browser data on/off, Auto clear browser data.\n\nProgress: five feature requests and two bugs were merged into a new version, expected for release around August 7. After Legamaster testing, Prima uploads it to Xyte.\n\nNote: modifications are typically synchronized across four versions (SA5E-EL and SA5E-PL: 1.1.1x and 1.2.x). Versions starting with 1.2.x are firmware for newer motherboards.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.14",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [],
+    "activity": [],
+    "createdAt": "2026-07-02T09:00:00.000Z",
+    "updatedAt": "2026-08-03T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-02",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Firmware request",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Replace Auto Loop with a No-Signal-Switch dropdown",
+    "description": "Change Auto loop to No signal switch, add a drop-down menu to select the signal source, and Android set as the final destination.\n\nDesign note: Android becomes the fourth item in the list; when actually performing a loop query, Android is the last destination.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.14",
+    "zendeskRef": "",
+    "release": "R1",
+    "attachments": [],
+    "comments": [],
+    "activity": [],
+    "createdAt": "2026-07-07T09:00:00.000Z",
+    "updatedAt": "2026-07-07T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-03",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Firmware request",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Rename 'System Suspend Mode' to 'Quick Standby', move to Power settings",
+    "description": "Change \"System Suspend Mode\" to \"Quick Standby\" and move it to Power Settings under the main settings menu.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.14",
+    "zendeskRef": "",
+    "release": "R1",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cyf3c8e",
+        "author": "Owen",
+        "text": "Found fixed in 1.1.16.",
+        "createdAt": "2026-08-03T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-07T09:00:00.000Z",
+    "updatedAt": "2026-08-03T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-04",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Software",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "High Contrast Text / Anti Blue Light changes unrelated font elements",
+    "description": "After enabling High Contrast Text and Anti Blue Light, some font elements that shouldn't have changed changed.\n\nReproduced in person with DQA and PM.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.14",
+    "zendeskRef": "",
+    "release": "R1",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cg4w99t",
+        "author": "Owen",
+        "text": "A second location where this occurs was discovered.",
+        "createdAt": "2026-07-13T09:00:00.000Z"
+      },
+      {
+        "id": "Cbne5jj",
+        "author": "Owen",
+        "text": "Found fixed in 1.1.16.",
+        "createdAt": "2026-08-03T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-07T09:00:00.000Z",
+    "updatedAt": "2026-08-03T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-05",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "In Progress",
+    "title": "Renamed signal source still shows old name in main menu",
+    "description": "After renaming the signal source, the signal source in the main menu still displays the original name.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.14",
+    "zendeskRef": "",
+    "release": "R2",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cohio59",
+        "author": "Owen",
+        "text": "Reproduced the bug in person for DQA.",
+        "createdAt": "2026-07-15T09:00:00.000Z"
+      },
+      {
+        "id": "Ctkr551",
+        "author": "Owen",
+        "text": "Still not fixed in 1.1.16.",
+        "createdAt": "2026-07-28T09:00:00.000Z"
+      },
+      {
+        "id": "C6b17g4",
+        "author": "Owen",
+        "text": "Will fix in 1.1.18.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      },
+      {
+        "id": "C5g8sxr",
+        "author": "Owen",
+        "text": "Confirmed: will fix in 1.1.18.",
+        "createdAt": "2026-08-21T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-10T09:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-06",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Interoperability",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Unable to output 4K HDMI signal",
+    "description": "Unable to output 4K HDMI signal.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.14",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "C1c6cun",
+        "author": "Owen",
+        "text": "Verified: EVOLVE Pro output to EVOLVE Pro requires a reinforced HDMI cable — the standard cable only supports 1080p. EVOLVE Pro output to Discover 3 keeps detecting signal. Tom used a non-reinforced cable for the failed combinations. Still to clarify: (1) why a reinforced cable is needed, and (2) the root cause of the failure. DQA suspects it's related to the EDID format, but evidence is still needed.",
+        "createdAt": "2026-07-15T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-14T09:00:00.000Z",
+    "updatedAt": "2026-07-15T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-07",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Firmware request",
+    "category": "Software",
+    "priority": "Medium",
+    "status": "In Progress",
+    "title": "Whiteboard cloud upload requires saving locally first",
+    "description": "Uploading files from the whiteboard to the cloud requires saving them locally first. This is redundant and consumes local storage space. Requirement: save directly to the cloud drive.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.14",
+    "zendeskRef": "",
+    "release": "R3",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cjga7eh",
+        "author": "Owen",
+        "text": "Submitted to iPrima PM (she was on leave two days ago).",
+        "createdAt": "2026-07-16T09:00:00.000Z"
+      },
+      {
+        "id": "Cew7c13",
+        "author": "Owen",
+        "text": "Plan to accomplish in the next version.",
+        "createdAt": "2026-07-21T09:00:00.000Z"
+      },
+      {
+        "id": "C9k8pv4",
+        "author": "Owen",
+        "text": "Will check.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      },
+      {
+        "id": "C4cgd1m",
+        "author": "Owen",
+        "text": "Confirmed will be OK in 1.1.18.",
+        "createdAt": "2026-08-21T09:00:00.000Z"
+      },
+      {
+        "id": "C8cinok",
+        "author": "Owen",
+        "text": "Postponed to version 1.1.19.",
+        "createdAt": "2026-08-25T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-14T09:00:00.000Z",
+    "updatedAt": "2026-08-25T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-08",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Interoperability",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Intune registration blocks native apps and Play Store access",
+    "description": "After registering the screen with the third-party management platform Intune, native app access was lost and apps could not be downloaded from the Google Play Store.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cuwcogb",
+        "author": "Owen",
+        "text": "Don't have an Intune account to reproduce the issue yet.",
+        "createdAt": "2026-07-30T09:00:00.000Z"
+      },
+      {
+        "id": "Cugezyq",
+        "author": "Owen",
+        "text": "Tom provided an Intune account — awaiting testing.",
+        "createdAt": "2026-07-31T09:00:00.000Z"
+      },
+      {
+        "id": "Cfy9zar",
+        "author": "Owen",
+        "text": "Confirmed: this is by design.",
+        "createdAt": "2026-08-21T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-28T09:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-09",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Hardware",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Blue standby LEDs stay on when screen is powered off",
+    "description": "When the screen is off, it still shows 2 blue LEDs on.\n\nWorkaround found: disabling these 3 settings turns the LEDs off when the screen shuts down: 1. Wake on LAN, 2. Quick Standby, 3. Start up display by external device.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.16",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "C355jq1",
+        "author": "Owen",
+        "text": "Requested to move 'Start up display by external device' into the normal Power settings menu.",
+        "createdAt": "2026-08-21T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-12T09:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-10",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "In Progress",
+    "title": "Quick Standby ineffective when Wake on LAN is also enabled",
+    "description": "In 1.1.16, when Wake on LAN and Quick Standby are enabled simultaneously, Quick Standby becomes ineffective.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.16",
+    "zendeskRef": "",
+    "release": "R2",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Clv6yhz",
+        "author": "Owen",
+        "text": "Will fix in 1.1.18.",
+        "createdAt": "2026-08-12T09:00:00.000Z"
+      },
+      {
+        "id": "C4rioes",
+        "author": "Owen",
+        "text": "RC5E has this issue too.",
+        "createdAt": "2026-08-14T09:00:00.000Z"
+      },
+      {
+        "id": "Ckr1cny",
+        "author": "Owen",
+        "text": "Confirmed: will fix in 1.1.18.",
+        "createdAt": "2026-08-21T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-12T09:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-11",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "Open",
+    "title": "Shutdown prompt keeps popping up after enabling sleep mode",
+    "description": "After activating sleep mode, a shutdown prompt keeps popping up.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.16",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cxeudv0",
+        "author": "Owen",
+        "text": "Waiting for update.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-14T09:00:00.000Z",
+    "updatedAt": "2026-08-19T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-12",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Firmware request",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "Open",
+    "title": "Move 'start display by external device' to normal Power settings menu",
+    "description": "'Start display by external device' change to the normal menu under Power settings.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Culfai4",
+        "author": "Owen",
+        "text": "Converted from bug EVPD-09 into a feature request.",
+        "createdAt": "2026-08-24T09:00:00.000Z"
+      },
+      {
+        "id": "C2f03po",
+        "author": "Owen",
+        "text": "Waiting for reply.",
+        "createdAt": "2026-08-26T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-24T09:00:00.000Z",
+    "updatedAt": "2026-08-26T09:00:00.000Z"
+  },
+  {
+    "id": "EVPD-13",
+    "series": "Evolve Dynamic and Pro",
+    "type": "Bug",
+    "category": "Hardware",
+    "priority": "Medium",
+    "status": "Open",
+    "title": "AUX audio very low; built-in speaker stops working on AUX unplug",
+    "description": "1. Audio input very low over AUX cable.\n2. When the AUX cable is plugged in, the external device plays sound; when the AUX cable is unplugged, the built-in speaker stops working.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE Pro",
+    "fwVersion": "1.1.16",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Chvn08o",
+        "author": "Owen",
+        "text": "Reproduced with DQA and submitted to Claire.",
+        "createdAt": "2026-08-25T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-25T09:00:00.000Z",
+    "updatedAt": "2026-08-25T09:00:00.000Z"
+  },
+  {
+    "id": "EV2-01",
+    "series": "Evolve 2",
+    "type": "Bug",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Swisscom network certificate imports to wrong location",
+    "description": "The customer wants to import the Swisscom network certificate into the root directory, but the current import location is incorrect and it will not take effect.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE 2",
+    "fwVersion": "",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cq94ugz",
+        "author": "Owen",
+        "text": "Contacted RC software engineer — he asked the customer for a video of the desired install location.",
+        "createdAt": "2026-07-15T09:00:00.000Z"
+      },
+      {
+        "id": "Com0owk",
+        "author": "Owen",
+        "text": "Submitted the video and description to R&D.",
+        "createdAt": "2026-07-28T09:00:00.000Z"
+      },
+      {
+        "id": "C42iiub",
+        "author": "Owen",
+        "text": "Submitted Prima's response to the customer.",
+        "createdAt": "2026-07-29T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-15T09:00:00.000Z",
+    "updatedAt": "2026-07-29T09:00:00.000Z"
+  },
+  {
+    "id": "EV2-02",
+    "series": "Evolve 2",
+    "type": "Firmware request",
+    "category": "Software",
+    "priority": "Medium",
+    "status": "Done",
+    "title": "Sign the EVOLVE 2 signage display app",
+    "description": "Request to make the signage display app in EVOLVE 2 firmware signed.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "EVOLVE 2",
+    "fwVersion": "",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Ch8e8kc",
+        "author": "Owen",
+        "text": "Submitted to Claire, provided the APK.",
+        "createdAt": "2026-07-28T09:00:00.000Z"
+      },
+      {
+        "id": "C030pb4",
+        "author": "Owen",
+        "text": "Provided the signed APK to Tom.",
+        "createdAt": "2026-07-29T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-28T09:00:00.000Z",
+    "updatedAt": "2026-07-29T09:00:00.000Z"
+  },
+  {
+    "id": "DISC3-01",
+    "series": "Discover 3",
+    "type": "Bug",
+    "category": "Interoperability",
+    "priority": "Medium",
+    "status": "In Review",
+    "title": "Can't receive 4K HDMI signal; stuck loading when switching sources",
+    "description": "1. Unable to receive 4K HDMI signal.\n2. Keeps loading when switching signal sources.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "Discover 3",
+    "fwVersion": "1.0.33",
+    "zendeskRef": "",
+    "release": "R4",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cz386jp",
+        "author": "Owen",
+        "text": "Submitted info to CVTE.",
+        "createdAt": "2026-07-22T09:00:00.000Z"
+      },
+      {
+        "id": "Cg2r1yu",
+        "author": "Owen",
+        "text": "CVTE provided a new version — still can't receive 4K.",
+        "createdAt": "2026-07-28T09:00:00.000Z"
+      },
+      {
+        "id": "C8fdv1a",
+        "author": "Owen",
+        "text": "CVTE provided another new version.",
+        "createdAt": "2026-07-31T09:00:00.000Z"
+      },
+      {
+        "id": "Cd8qrog",
+        "author": "Owen",
+        "text": "Provided logs to CVTE R&D.",
+        "createdAt": "2026-08-04T09:00:00.000Z"
+      },
+      {
+        "id": "Chm28r0",
+        "author": "Owen",
+        "text": "Waiting for reply.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      },
+      {
+        "id": "C29uzds",
+        "author": "Owen",
+        "text": "Received the serial port tool from CVTE.",
+        "createdAt": "2026-08-21T09:00:00.000Z"
+      },
+      {
+        "id": "Cyj1j4l",
+        "author": "Owen",
+        "text": "Sent the latest log.",
+        "createdAt": "2026-08-25T09:00:00.000Z"
+      },
+      {
+        "id": "Ciq7o6x",
+        "author": "Owen",
+        "text": "Tested in 1.0.34 with: dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,1 and dumpvman SourceCtrl --setSocHdmiPortEdidVersion=0,3 — 4K signal received successfully.",
+        "createdAt": "2026-08-27T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-07-17T09:00:00.000Z",
+    "updatedAt": "2026-08-27T09:00:00.000Z"
+  },
+  {
+    "id": "DISC3-02",
+    "series": "Discover 3",
+    "type": "Bug",
+    "category": "Interoperability",
+    "priority": "Medium",
+    "status": "Blocked",
+    "title": "HDMI CLK still active even after disabling related setting",
+    "description": "It is still invoked even after disabling the relevant setting.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "Discover 3",
+    "fwVersion": "",
+    "zendeskRef": "",
+    "release": "R5",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cvczblx",
+        "author": "Owen",
+        "text": "Submitted feature request to CVTE.",
+        "createdAt": "2026-08-12T09:00:00.000Z"
+      },
+      {
+        "id": "Cpr9s79",
+        "author": "Owen",
+        "text": "Reframed as a feature request: disable HDMI CLK when the product is manufactured.",
+        "createdAt": "2026-08-14T09:00:00.000Z"
+      },
+      {
+        "id": "Coea9e0",
+        "author": "Owen",
+        "text": "Waiting for reply.",
+        "createdAt": "2026-08-17T09:00:00.000Z"
+      },
+      {
+        "id": "C2fe4l6",
+        "author": "Owen",
+        "text": "Waiting for reply.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      },
+      {
+        "id": "C9gjv0e",
+        "author": "Owen",
+        "text": "Waiting for reply.",
+        "createdAt": "2026-08-25T09:00:00.000Z"
+      },
+      {
+        "id": "Ch3rtcs",
+        "author": "Owen",
+        "text": "Waiting for 1.0.35.",
+        "createdAt": "2026-08-26T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-12T09:00:00.000Z",
+    "updatedAt": "2026-08-26T09:00:00.000Z"
+  },
+  {
+    "id": "EXP-01",
+    "series": "Explore",
+    "type": "Bug",
+    "category": "Hardware",
+    "priority": "Medium",
+    "status": "In Progress",
+    "title": "Standby wake only works via HDMI port 1",
+    "description": "In standby mode, only HDMI port 1 can wake the device, and the cable must be unplugged and plugged back in. Powering on via an HDMI source will not wake the device. HDMI ports 2 and 3 also cannot wake the device.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "Explore 2",
+    "fwVersion": "",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cb0a4t2",
+        "author": "Owen",
+        "text": "Waiting for update.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      },
+      {
+        "id": "C56r7wm",
+        "author": "Owen",
+        "text": "Confirmed: ports 2 & 3 not waking the device is by design.",
+        "createdAt": "2026-08-26T09:00:00.000Z"
+      },
+      {
+        "id": "C2vp4e5",
+        "author": "Owen",
+        "text": "Still need to find why powering on via an HDMI source doesn't wake the screen.",
+        "createdAt": "2026-08-26T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-14T09:00:00.000Z",
+    "updatedAt": "2026-08-26T09:00:00.000Z"
+  },
+  {
+    "id": "GEN-01",
+    "series": "General projects",
+    "type": "Firmware request",
+    "category": "Interoperability",
+    "priority": "High",
+    "status": "In Progress",
+    "title": "Extract & distribute device parameters via Xyte platform",
+    "description": "Extract parameters from one registered machine and distribute them to other machines through the Xyte platform.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "",
+    "fwVersion": "",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Ciy265n",
+        "author": "Owen",
+        "text": "Awaiting Marcos to provide the needed extraction parameters to determine the cooperation method.",
+        "createdAt": "2026-08-03T09:00:00.000Z"
+      },
+      {
+        "id": "Chmr8ut",
+        "author": "Owen",
+        "text": "All settings and apps now support upload.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      },
+      {
+        "id": "C3o7xof",
+        "author": "Owen",
+        "text": "Marcos will provide the list.",
+        "createdAt": "2026-08-19T09:00:00.000Z"
+      },
+      {
+        "id": "Ck5ajnw",
+        "author": "Owen",
+        "text": "List provided.",
+        "createdAt": "2026-08-25T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-03T09:00:00.000Z",
+    "updatedAt": "2026-08-25T09:00:00.000Z"
+  },
+  {
+    "id": "GEN-02",
+    "series": "General projects",
+    "type": "Bug",
+    "category": "Firmware",
+    "priority": "Medium",
+    "status": "In Progress",
+    "title": "Shutdown prompt timing wrong on power button (coreone)",
+    "description": "The shutdown prompt only appears after pressing and releasing the power button. Requested: it should appear during the power button press, like on other models.",
+    "reporter": "Tom",
+    "assignee": "",
+    "product": "",
+    "fwVersion": "coreone",
+    "zendeskRef": "",
+    "release": "",
+    "attachments": [],
+    "comments": [
+      {
+        "id": "Cix6rx0",
+        "author": "Owen",
+        "text": "Will fix in the next coreone version.",
+        "createdAt": "2026-08-21T09:00:00.000Z"
+      }
+    ],
+    "activity": [],
+    "createdAt": "2026-08-21T09:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z"
+  }
+];
+    const releases = [
+  {
+    "id": "R1",
+    "series": "Evolve Dynamic and Pro",
+    "version": "1.1.16",
+    "targetDate": "2026-08-07",
+    "status": "Released",
+    "downloadUrl": "",
+    "notes": "Batch of feature requests and bug fixes merged for release.",
+    "createdAt": "2026-07-02T09:00:00.000Z",
+    "updatedAt": "2026-08-03T09:00:00.000Z"
+  },
+  {
+    "id": "R2",
+    "series": "Evolve Dynamic and Pro",
+    "version": "1.1.18",
+    "targetDate": "",
+    "status": "In Progress",
+    "downloadUrl": "",
+    "notes": "",
+    "createdAt": "2026-08-19T09:00:00.000Z",
+    "updatedAt": "2026-08-21T09:00:00.000Z"
+  },
+  {
+    "id": "R3",
+    "series": "Evolve Dynamic and Pro",
+    "version": "1.1.19",
+    "targetDate": "",
+    "status": "Planned",
+    "downloadUrl": "",
+    "notes": "Postponed from 1.1.18.",
+    "createdAt": "2026-08-19T09:00:00.000Z",
+    "updatedAt": "2026-08-25T09:00:00.000Z"
+  },
+  {
+    "id": "R4",
+    "series": "Discover 3",
+    "version": "1.0.34",
+    "targetDate": "",
+    "status": "In Progress",
+    "downloadUrl": "",
+    "notes": "HDMI EDID version fix — confirmed working via serial commands, pending formal rollout.",
+    "createdAt": "2026-08-04T09:00:00.000Z",
+    "updatedAt": "2026-08-27T09:00:00.000Z"
+  },
+  {
+    "id": "R5",
+    "series": "Discover 3",
+    "version": "1.0.35",
+    "targetDate": "",
+    "status": "Planned",
+    "downloadUrl": "",
+    "notes": "",
+    "createdAt": "2026-08-12T09:00:00.000Z",
+    "updatedAt": "2026-08-26T09:00:00.000Z"
+  }
+];
+    return {
+      tickets: tickets,
+      releases: releases,
+      seriesCounters: {"Evolve Dynamic and Pro": 13, "Evolve 2": 2, "Explore": 1, "Discover 3": 2, "General projects": 2},
+      releaseCounter: 5,
+    };
   }
 
   // Renumbers any ticket whose ID doesn't match its series' current prefix (e.g. old LM-xxx tickets,
@@ -985,20 +1624,27 @@
 
   async function loadData(){
     let needsPersist = false;
+
+    if (GOOGLE_SHEETS_API_URL === 'PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE'){
+      $('#loading').textContent = 'Setup needed: GOOGLE_SHEETS_API_URL hasn\u2019t been set in the code yet. See the setup guide.';
+      return;
+    }
+
     try {
-      const res = await window.storage.get(STORE_KEY, true);
-      if (res && res.value) {
-        data = JSON.parse(res.value);
-        if (!Array.isArray(data.tickets)) data.tickets = [];
-        if (!Array.isArray(data.releases)) data.releases = [];
-        if (!data.seriesCounters || typeof data.seriesCounters !== 'object') data.seriesCounters = {};
-        if (typeof data.releaseCounter !== 'number') data.releaseCounter = data.releases.length;
-        data.releases.forEach(r => { if (r.downloadUrl === undefined) r.downloadUrl = ''; });
-        data.tickets = data.tickets.map(migrateLegacy);
-        if (migrateTicketIds()) needsPersist = true;
-      }
+      const remote = await apiGetAll();
+      data.tickets = Array.isArray(remote.tickets) ? remote.tickets : [];
+      data.releases = Array.isArray(remote.releases) ? remote.releases : [];
+      data.seriesCounters = (remote.seriesCounters && typeof remote.seriesCounters === 'object') ? remote.seriesCounters : {};
+      data.releaseCounter = typeof remote.releaseCounter === 'number' ? remote.releaseCounter : 0;
+      data.realDataImported = !!remote.realDataImported;
+      data.manufacturerFieldCleared = !!remote.manufacturerFieldCleared;
+      data.importedCommentsAttributedToOwen = !!remote.importedCommentsAttributedToOwen;
+      data.releases.forEach(r => { if (r.downloadUrl === undefined) r.downloadUrl = ''; });
+      data.tickets = data.tickets.map(migrateLegacy);
+      if (migrateTicketIds()) needsPersist = true;
     } catch(e) {
-      // A non-existent key throws rather than returning null — leave `data` at its default empty shape.
+      $('#loading').textContent = 'Could not reach the shared sheet (' + e.message + '). Check GOOGLE_SHEETS_API_URL and that the Apps Script is deployed with "Anyone" access, then reload.';
+      return;
     }
 
     // One-time replacement of any earlier example/test data with the real imported issue list.
@@ -1059,15 +1705,14 @@
 
   async function persist(){
     try {
-      const res = await window.storage.set(STORE_KEY, JSON.stringify(data), true);
-      if (!res) toast('Save failed — please try again');
+      await apiSaveAll(data);
     } catch(e) {
-      toast('Save failed — please try again');
+      toast('Save failed — please try again (' + e.message + ')');
     }
     // Every persist() call is the result of something the local user just did —
     // treat it as seen so they don't get notified about their own changes.
     notifLastSeen = new Date().toISOString();
-    try { await window.storage.set('notif-last-seen', notifLastSeen, false); } catch(e) { /* best effort */ }
+    lsSet('notif-last-seen', notifLastSeen);
     renderNotifBadge();
   }
 
