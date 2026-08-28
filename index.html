@@ -116,6 +116,28 @@
   }
 
   .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+
+  .notif-wrap { position: relative; }
+  .notif-btn { font-size: 16px; padding: 7px 10px; position: relative; }
+  .notif-badge {
+    position: absolute; top: -4px; right: -4px; background: var(--type-bug); color: #fff;
+    font-size: 10px; font-weight: 800; min-width: 16px; height: 16px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; padding: 0 3px; line-height: 1;
+  }
+  .notif-panel {
+    position: absolute; top: 46px; right: 0; width: 320px; max-height: 420px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(20,24,38,0.18); z-index: 60;
+  }
+  .notif-panel-head {
+    display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;
+    border-bottom: 1px solid var(--border); font-size: 12.5px; font-weight: 700;
+  }
+  .notif-item { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 12.5px; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-item:hover { background: var(--surface-2); }
+  .notif-item .nt-time { color: var(--ink-faint); font-size: 11px; margin-top: 3px; }
+  .notif-empty { padding: 24px 12px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
   .view-toggle button { border: none; border-radius: 0; padding: 7px 12px; }
   .view-toggle button.active { background: var(--ink); color: #fff; }
 
@@ -348,6 +370,12 @@
         <div class="sub" id="seriesSub">Bugs &amp; firmware requests — shared across the whole service and development team</div>
       </div>
       <div class="top-actions">
+        <div class="notif-wrap">
+          <button id="notifBtn" class="ghost notif-btn" title="Notifications" aria-label="Notifications">
+            🔔<span id="notifBadge" class="notif-badge" style="display:none;">0</span>
+          </button>
+          <div id="notifPanel" class="notif-panel" style="display:none;"></div>
+        </div>
         <div class="view-toggle">
           <button id="viewKanbanBtn" class="active">Board</button>
           <button id="viewListBtn">List</button>
@@ -431,6 +459,9 @@
   let data = { seriesCounters: {}, releaseCounter: 0, tickets: [], releases: [] };
   let view = 'kanban';
   let currentUser = null;
+  let notifLastSeen = null;
+  let notifEvents = [];
+  let notifPanelOpen = false;
   let selectedSeries = SERIES[0];
   let filters = { search:'', type:'', category:'', priority:'', assignee:'' };
   let editingId = null;
@@ -461,6 +492,131 @@
 
   function knownNames(){
     return Array.from(new Set(data.tickets.flatMap(t=>[t.reporter, t.assignee, ...(t.comments||[]).map(c=>c.author)]).filter(Boolean))).sort();
+  }
+
+  // ---- Notifications ----
+  function timeAgo(iso){
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return min + 'm ago';
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return hr + 'h ago';
+    const day = Math.floor(hr / 24);
+    if (day < 7) return day + 'd ago';
+    return fmtDate(iso);
+  }
+
+  function collectEvents(tickets){
+    const events = [];
+    (tickets||[]).forEach(t => {
+      events.push({ type:'ticket', ticketId:t.id, series:t.series, text:`New ticket ${t.id}: ${t.title}`, createdAt:t.createdAt });
+      (t.comments||[]).forEach(c => {
+        events.push({ type:'comment', ticketId:t.id, series:t.series, text:`${c.author} commented on ${t.id}`, createdAt:c.createdAt });
+      });
+      (t.activity||[]).forEach(a => {
+        events.push({ type:'activity', ticketId:t.id, series:t.series, text:`${t.id}: ${a.text}`, createdAt:a.createdAt });
+      });
+    });
+    return events;
+  }
+
+  async function loadNotifState(){
+    try {
+      const res = await window.storage.get('notif-last-seen', false);
+      if (res && res.value){ notifLastSeen = res.value; return; }
+    } catch(e) { /* not set yet */ }
+    // First time this user has been in: start clean rather than flooding them with all historic activity.
+    notifLastSeen = new Date().toISOString();
+    try { await window.storage.set('notif-last-seen', notifLastSeen, false); } catch(e) { /* best effort */ }
+  }
+
+  async function pollNotifications(){
+    try {
+      const res = await window.storage.get(STORE_KEY, true);
+      if (!res || !res.value) return;
+      const remote = JSON.parse(res.value);
+      notifEvents = collectEvents(remote.tickets)
+        .filter(e => e.createdAt > notifLastSeen)
+        .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 30);
+      renderNotifBadge();
+      if (notifPanelOpen) renderNotifPanel();
+    } catch(e) { /* transient — try again next poll */ }
+  }
+
+  function renderNotifBadge(){
+    const badge = $('#notifBadge');
+    if (!badge) return;
+    const n = notifEvents.length;
+    if (n > 0){ badge.style.display = 'flex'; badge.textContent = n > 9 ? '9+' : String(n); }
+    else { badge.style.display = 'none'; }
+  }
+
+  function renderNotifPanel(){
+    const panel = $('#notifPanel');
+    if (notifEvents.length === 0){
+      panel.innerHTML = `<div class="notif-panel-head">Notifications</div><div class="notif-empty">Nothing new.</div>`;
+      return;
+    }
+    panel.innerHTML = `<div class="notif-panel-head">Notifications<span class="switch-link" id="notifMarkReadBtn">Mark all read</span></div>` +
+      notifEvents.map((e,i) => `
+        <div class="notif-item" data-idx="${i}">
+          <div>${esc(e.text)}</div>
+          <div class="nt-time">${e.series} · ${timeAgo(e.createdAt)}</div>
+        </div>
+      `).join('');
+    panel.querySelectorAll('.notif-item').forEach(row => {
+      row.addEventListener('click', () => openNotification(notifEvents[parseInt(row.dataset.idx,10)]));
+    });
+    const markBtn = $('#notifMarkReadBtn');
+    if (markBtn) markBtn.addEventListener('click', (ev) => { ev.stopPropagation(); markNotificationsRead(); });
+  }
+
+  async function markNotificationsRead(){
+    notifLastSeen = new Date().toISOString();
+    try { await window.storage.set('notif-last-seen', notifLastSeen, false); } catch(e) { /* best effort */ }
+    notifEvents = [];
+    renderNotifBadge();
+    renderNotifPanel();
+  }
+
+  async function refreshDataFromStorage(){
+    try {
+      const res = await window.storage.get(STORE_KEY, true);
+      if (res && res.value){
+        const fresh = JSON.parse(res.value);
+        if (Array.isArray(fresh.tickets)) data.tickets = fresh.tickets.map(migrateLegacy);
+        if (Array.isArray(fresh.releases)){ fresh.releases.forEach(r=>{ if(r.downloadUrl===undefined) r.downloadUrl=''; }); data.releases = fresh.releases; }
+        if (fresh.seriesCounters) data.seriesCounters = fresh.seriesCounters;
+        if (typeof fresh.releaseCounter === 'number') data.releaseCounter = fresh.releaseCounter;
+      }
+    } catch(e) { /* keep current data if this fails */ }
+  }
+
+  async function openNotification(evt){
+    closeNotifPanel();
+    await refreshDataFromStorage();
+    selectedSeries = evt.series;
+    renderSidebar();
+    populateAssigneeFilter();
+    updateHeader();
+    render();
+    const stillExists = data.tickets.find(t=>t.id===evt.ticketId);
+    if (stillExists) openModal(evt.ticketId);
+    else toast(evt.ticketId + ' no longer exists');
+    await markNotificationsRead();
+  }
+
+  function closeNotifPanel(){
+    notifPanelOpen = false;
+    $('#notifPanel').style.display = 'none';
+  }
+
+  function toggleNotifPanel(){
+    notifPanelOpen = !notifPanelOpen;
+    $('#notifPanel').style.display = notifPanelOpen ? 'block' : 'none';
+    if (notifPanelOpen) renderNotifPanel();
   }
 
   function showEntryGate(prefillName){
@@ -873,6 +1029,10 @@
     $('#filters').style.display = 'flex';
     updateCurrentUserDisplay();
 
+    await loadNotifState();
+    await pollNotifications();
+    setInterval(pollNotifications, 30000);
+
     const hashId = decodeURIComponent((window.location.hash || '').replace('#',''));
     const linkedTicket = hashId ? data.tickets.find(t=>t.id===hashId) : null;
     if (linkedTicket) selectedSeries = linkedTicket.series;
@@ -892,6 +1052,11 @@
     } catch(e) {
       toast('Save failed — please try again');
     }
+    // Every persist() call is the result of something the local user just did —
+    // treat it as seen so they don't get notified about their own changes.
+    notifLastSeen = new Date().toISOString();
+    try { await window.storage.set('notif-last-seen', notifLastSeen, false); } catch(e) { /* best effort */ }
+    renderNotifBadge();
   }
 
   function nextKey(series){
@@ -1629,6 +1794,11 @@
     $('#searchInput').value=''; $('#filterType').value=''; $('#filterCategory').value='';
     $('#filterPriority').value=''; $('#filterAssignee').value='';
     render();
+  });
+
+  $('#notifBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleNotifPanel(); });
+  document.addEventListener('click', (e) => {
+    if (notifPanelOpen && !e.target.closest('.notif-wrap')) closeNotifPanel();
   });
 
   updateHeader();
