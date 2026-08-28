@@ -292,6 +292,8 @@
   .attach-row a { font-size: 12.5px; color: var(--accent); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .attach-row .x { margin-left: auto; cursor: pointer; color: var(--ink-faint); font-size: 15px; line-height: 1; padding: 0 2px; }
   .attach-add { display: flex; gap: 6px; }
+  .attach-upload-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .attach-upload-row .meta-note { margin-top: 0; }
   .attach-add input { flex: 1; font-size: 12.5px; padding: 7px 9px; }
   .attach-add button { padding: 7px 10px; font-size: 12px; }
 
@@ -466,6 +468,30 @@
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'saveAll', payload }),
     }), 10000, 'Save');
+  }
+
+  function fileToBase64(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = () => reject(new Error('Could not read the file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function apiUploadFile(file){
+    // Unlike saveAll, we need to read the response here (the Drive link it hands back),
+    // so this can't run in no-cors mode — it uses a normal, readable request.
+    const base64 = await fileToBase64(file);
+    const res = await withTimeout(fetch(GOOGLE_SHEETS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'uploadFile', filename: file.name, mimeType: file.type || 'application/octet-stream', base64 }),
+    }), 25000, 'Upload');
+    if (!res.ok) throw new Error('Upload failed (' + res.status + ')');
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    return json.url;
   }
 
   // Personal, per-browser settings (name, password gate, notification checkpoint) — now that this
@@ -2219,12 +2245,17 @@
         </div>
 
         <div class="field">
-          <label>Attachments (link to screenshot, log, or video)</label>
+          <label>Attachments</label>
           <div class="attach-list" id="attachList"></div>
+          <div class="attach-upload-row">
+            <input type="file" id="attachFileInput" style="display:none;">
+            <button id="attachUploadBtn" class="ghost small" type="button">📎 Upload a file (max 8MB)</button>
+            <span class="meta-note" id="attachUploadStatus"></span>
+          </div>
           <div class="attach-add">
-            <input type="text" id="attachName" placeholder="Name (e.g. touch-issue screenshot)">
+            <input type="text" id="attachName" placeholder="Or paste a link — name (e.g. touch-issue screenshot)">
             <input type="url" id="attachUrl" placeholder="https://…">
-            <button id="attachAddBtn" type="button">Add</button>
+            <button id="attachAddBtn" type="button">Add link</button>
           </div>
         </div>
 
@@ -2276,6 +2307,8 @@
 
     renderAttachList();
     $('#attachAddBtn').addEventListener('click', addAttachmentFromForm);
+    $('#attachUploadBtn').addEventListener('click', () => $('#attachFileInput').click());
+    $('#attachFileInput').addEventListener('change', (e) => handleFileUpload(e.target.files[0]));
     $('#closeModalBtn').addEventListener('click', closeModal);
     $('#cancelBtn').addEventListener('click', closeModal);
     $('#saveBtn').addEventListener('click', saveTicket);
@@ -2366,6 +2399,33 @@
     draftAttachments.push({ name: nameEl.value.trim() || url, url });
     nameEl.value = ''; urlEl.value = '';
     renderAttachList();
+  }
+
+  const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+  async function handleFileUpload(file){
+    const fileInput = $('#attachFileInput');
+    const statusEl = $('#attachUploadStatus');
+    const btn = $('#attachUploadBtn');
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES){
+      toast('File too large — max 8MB. Paste a link instead for bigger files.');
+      if (fileInput) fileInput.value = '';
+      return;
+    }
+    statusEl.textContent = 'Uploading ' + file.name + '…';
+    btn.disabled = true;
+    try {
+      const url = await apiUploadFile(file);
+      draftAttachments.push({ name: file.name, url });
+      renderAttachList();
+      toast('Uploaded ' + file.name);
+    } catch(err){
+      toast('Upload failed: ' + err.message);
+    }
+    statusEl.textContent = '';
+    btn.disabled = false;
+    if (fileInput) fileInput.value = '';
   }
 
   function closeModal(){
