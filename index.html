@@ -444,7 +444,10 @@
   }
 
   async function apiGetAll(){
-    const res = await withTimeout(fetch(GOOGLE_SHEETS_API_URL + '?action=getAll'), 10000, 'Load');
+    // Force a fresh read every time — GET requests to the same URL can otherwise get
+    // cached by the browser, showing stale data even right after a successful save.
+    const bustUrl = GOOGLE_SHEETS_API_URL + '?action=getAll&_=' + Date.now();
+    const res = await withTimeout(fetch(bustUrl, { cache: 'no-store' }), 10000, 'Load');
     if (!res.ok) throw new Error('Load failed (' + res.status + ')');
     const json = await res.json();
     if (json && json.error) throw new Error(json.error);
