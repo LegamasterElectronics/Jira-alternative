@@ -2380,7 +2380,12 @@
 
         <div class="field">
           <label for="f_desc">Description</label>
-          <textarea id="f_desc" placeholder="What's the issue, steps to reproduce, expected vs. actual behavior…">${t? esc(t.description):''}</textarea>
+          <textarea id="f_desc" placeholder="What's the issue — expected vs. actual behavior…">${t? esc(t.description):''}</textarea>
+        </div>
+
+        <div class="field">
+          <label for="f_steps">Steps to reproduce</label>
+          <textarea id="f_steps" placeholder="1. Open …&#10;2. Tap …&#10;3. …">${t? esc(t.stepsToReproduce||''):''}</textarea>
         </div>
 
         <div class="field row3">
@@ -2635,6 +2640,7 @@
       Object.assign(t, {
         title, type, series,
         description: $('#f_desc').value.trim(),
+        stepsToReproduce: $('#f_steps').value.trim(),
         category: $('#f_category').value,
         priority: $('#f_priority').value,
         status: newStatus,
@@ -2661,6 +2667,7 @@
         id: nextKey(series),
         title, type, series,
         description: $('#f_desc').value.trim(),
+        stepsToReproduce: $('#f_steps').value.trim(),
         category: $('#f_category').value,
         priority: $('#f_priority').value,
         status: $('#f_status').value,
