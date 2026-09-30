@@ -434,14 +434,31 @@
   .loopsign-toolbar-title { font-size: 16px; font-weight: 800; }
   .loopsign-toolbar-actions { display: flex; gap: 8px; }
   .loopsign-scroll { flex: 1; overflow: auto; padding: 28px; }
-  .loopsign-content { background: #14161F; color: #14161F; border-radius: 16px; padding: 28px; margin: 0 auto; max-width: 1500px; }
+  .loopsign-content { background: #14161F; color: #14161F; border-radius: 16px; padding: 28px; margin: 0 auto; max-width: 1500px; box-sizing: border-box; }
 
   .loopsign-header { text-align: center; margin-bottom: 24px; }
   .loopsign-header h1 { font-size: 26px; margin: 0 0 6px; font-weight: 800; color: #F3F1EA; }
   .loopsign-header .loopsign-date { font-size: 13px; color: #9BA0AE; }
 
   .loopsign-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; background: #EDEAE0; padding: 18px; border-radius: 10px; }
-  .loopsign-quadrant { background: #C7CFD9; border-radius: 8px; padding: 22px 26px 26px; min-height: 220px; }
+  .loopsign-quadrant { background: #C7CFD9; border-radius: 8px; padding: 22px 26px 26px; min-height: 220px; box-sizing: border-box; }
+
+  /* Applied only while capturing the PNG: makes the content fill the fixed 3840x2160
+     export canvas exactly, edge-to-edge, instead of shrink-wrapping to its own content
+     height — that mismatch was leaving blank canvas around the LoopSign frame. */
+  .loopsign-content.export-mode {
+    display: flex; flex-direction: column; border-radius: 0; margin: 0; max-width: none; height: 100%;
+  }
+  .loopsign-content.export-mode .loopsign-header { flex: none; margin-bottom: 36px; }
+  .loopsign-content.export-mode .loopsign-header h1 { font-size: 40px; }
+  .loopsign-content.export-mode .loopsign-header .loopsign-date { font-size: 18px; }
+  .loopsign-content.export-mode .loopsign-grid { flex: 1; grid-auto-rows: 1fr; }
+  .loopsign-content.export-mode .loopsign-quadrant { height: 100%; display: flex; flex-direction: column; }
+  .loopsign-content.export-mode .loopsign-quad-cols { flex: 1; }
+  .loopsign-content.export-mode .loopsign-quad-title { font-size: 30px; }
+  .loopsign-content.export-mode .loopsign-quad-col-head { font-size: 17px; }
+  .loopsign-content.export-mode .loopsign-quad-item { font-size: 17px; margin-bottom: 18px; }
+  .loopsign-content.export-mode .loopsign-quad-item .fw { font-size: 14px; }
   .loopsign-quad-title { text-align: center; font-size: 22px; font-weight: 800; color: #14161F; margin: 0 0 16px; }
   .loopsign-quad-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .loopsign-quad-col-head {
@@ -2787,15 +2804,18 @@
   async function exportLoopSignPNG(){
     const content = $('#loopsignContent');
     const btn = $('#loopsignExportBtn');
-    const originalWidth = content.style.width;
-    const originalMaxWidth = content.style.maxWidth;
+    const original = { width: content.style.width, maxWidth: content.style.maxWidth, height: content.style.height };
     btn.disabled = true;
     btn.textContent = 'Rendering…';
+    // Lock to the exact LoopSign canvas (4K, 16:9) and switch on export-mode so the
+    // content stretches to fill it edge-to-edge instead of leaving blank space around it.
     content.style.width = '3840px';
+    content.style.height = '2160px';
     content.style.maxWidth = 'none';
-    await new Promise(r => setTimeout(r, 80)); // let layout settle at the new width
+    content.classList.add('export-mode');
+    await new Promise(r => setTimeout(r, 80)); // let layout settle at the new size
     try {
-      const canvas = await html2canvas(content, { backgroundColor: '#ffffff', scale: 1, useCORS: true });
+      const canvas = await html2canvas(content, { backgroundColor: '#14161F', scale: 1, useCORS: true, width: 3840, height: 2160 });
       const link = document.createElement('a');
       link.download = 'loopsign-overview-' + new Date().toISOString().slice(0,10) + '.png';
       link.href = canvas.toDataURL('image/png');
@@ -2803,8 +2823,10 @@
     } catch(e) {
       toast('Export failed: ' + e.message);
     }
-    content.style.width = originalWidth;
-    content.style.maxWidth = originalMaxWidth;
+    content.classList.remove('export-mode');
+    content.style.width = original.width;
+    content.style.height = original.height;
+    content.style.maxWidth = original.maxWidth;
     btn.disabled = false;
     btn.textContent = 'Export as PNG';
   }
