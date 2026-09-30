@@ -434,32 +434,24 @@
   .loopsign-toolbar-title { font-size: 16px; font-weight: 800; }
   .loopsign-toolbar-actions { display: flex; gap: 8px; }
   .loopsign-scroll { flex: 1; overflow: auto; padding: 28px; }
-  .loopsign-content { background: #ffffff; color: #14161F; border-radius: 12px; padding: 40px; margin: 0 auto; max-width: 1400px; }
+  .loopsign-content { background: #14161F; color: #14161F; border-radius: 16px; padding: 28px; margin: 0 auto; max-width: 1500px; }
 
-  .loopsign-header { text-align: center; margin-bottom: 32px; }
-  .loopsign-header h1 { font-size: 30px; margin: 0 0 6px; font-weight: 800; color: #14161F; }
-  .loopsign-header .loopsign-date { font-size: 14px; color: #6B7280; }
+  .loopsign-header { text-align: center; margin-bottom: 24px; }
+  .loopsign-header h1 { font-size: 26px; margin: 0 0 6px; font-weight: 800; color: #F3F1EA; }
+  .loopsign-header .loopsign-date { font-size: 13px; color: #9BA0AE; }
 
-  .loopsign-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-  .loopsign-col-head {
-    font-size: 20px; font-weight: 800; padding: 10px 16px; border-radius: 10px; margin-bottom: 16px; text-align: center;
+  .loopsign-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; background: #EDEAE0; padding: 18px; border-radius: 10px; }
+  .loopsign-quadrant { background: #C7CFD9; border-radius: 8px; padding: 22px 26px 26px; min-height: 220px; }
+  .loopsign-quad-title { text-align: center; font-size: 22px; font-weight: 800; color: #14161F; margin: 0 0 16px; }
+  .loopsign-quad-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .loopsign-quad-col-head {
+    font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em;
+    color: #2B3040; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid rgba(20,22,31,0.15);
   }
-  .loopsign-col-head.done { background: #E1F3EA; color: #1E8A4C; }
-  .loopsign-col-head.pending { background: #FBEAE8; color: #C0392B; }
-
-  .loopsign-card {
-    background: #F7F8FA; border: 1px solid #E1E3E9; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
-  }
-  .loopsign-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-  .loopsign-key { font-family: "SF Mono", "Roboto Mono", Consolas, monospace; font-size: 13px; font-weight: 700; color: #6B7280; }
-  .loopsign-series { font-size: 12px; font-weight: 700; color: #3A4CD1; background: #E9EDFB; padding: 2px 9px; border-radius: 20px; }
-  .loopsign-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-  .loopsign-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 5px; }
-  .loopsign-title { font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #14161F; }
-  .loopsign-desc { font-size: 13px; color: #4B5160; line-height: 1.4; margin-bottom: 10px; }
-  .loopsign-progress { font-size: 13px; background: #fff; border: 1px solid #E1E3E9; border-radius: 8px; padding: 8px 10px; }
-  .loopsign-progress .lbl { font-weight: 700; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 3px; }
-  .loopsign-empty-col { font-size: 13px; color: #9CA3AF; text-align: center; padding: 20px; }
+  .loopsign-quad-item { font-size: 13px; color: #1B2130; margin-bottom: 12px; line-height: 1.35; }
+  .loopsign-quad-item .key { font-family: "SF Mono", "Roboto Mono", Consolas, monospace; font-size: 10.5px; color: #4B5160; font-weight: 700; }
+  .loopsign-quad-item .fw { display: block; font-size: 11px; font-weight: 700; color: #3A4CD1; margin-top: 2px; }
+  .loopsign-quad-empty { font-size: 12px; color: #5B6170; font-style: italic; }
 
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -2725,55 +2717,53 @@
     return items[0];
   }
 
-  function loopsignCardHtml(t){
-    const update = latestUpdateFor(t);
+  // Which firmware version a ticket belongs to, for the LoopSign board:
+  // Done items show the version it actually shipped/was confirmed in; pending items show
+  // what it's currently targeted for (falling back to "not scheduled" if no release is linked).
+  function loopsignFwLabel(t, isDone){
+    const relVersion = t.release ? releaseVersionFor(t.release) : null;
+    if (isDone) return relVersion ? ('v' + relVersion) : (t.fwVersion ? t.fwVersion : '—');
+    return relVersion ? ('Target: v' + relVersion) : 'Not scheduled';
+  }
+
+  function loopsignItemHtml(t, isDone){
     return `
-      <div class="loopsign-card">
-        <div class="loopsign-card-top">
-          <span class="loopsign-key">${esc(t.id)}</span>
-          <span class="loopsign-series">${esc(t.series)}</span>
-        </div>
-        <div class="loopsign-badges">
-          <span class="loopsign-badge" style="background:${t.type==='Bug'?'#FBEAE8':'#E9EDFB'}; color:${t.type==='Bug'?'#C0392B':'#2C4CBE'};">${t.type==='Bug'?'Bug':'Firmware request'}</span>
-          <span class="loopsign-badge" style="background:${catBgFor(t.category)}; color:${catColorFor(t.category)};">${esc(t.category)}</span>
-          <span class="loopsign-badge" style="background:${priBgFor(t.priority)}; color:${priColorFor(t.priority)};">${esc(t.priority)}</span>
-        </div>
-        <p class="loopsign-title">${esc(t.title)}</p>
-        ${t.description ? `<div class="loopsign-desc">${esc(t.description)}</div>` : ''}
-        <div class="loopsign-progress">
-          <span class="lbl">Current progress</span>
-          ${update ? esc(update.text) + ' — ' + fmtDate(update.createdAt) : 'No updates yet.'}
+      <div class="loopsign-quad-item">
+        ${esc(t.title)}
+        <span class="fw">${esc(t.id)} · ${esc(loopsignFwLabel(t, isDone))}</span>
+      </div>
+    `;
+  }
+
+  function loopsignQuadrantHtml(seriesName, tickets){
+    const done = tickets.filter(t=>t.status==='Done');
+    const pending = tickets.filter(t=>t.status!=='Done');
+    return `
+      <div class="loopsign-quadrant">
+        <h2 class="loopsign-quad-title">${esc(seriesName)}</h2>
+        <div class="loopsign-quad-cols">
+          <div>
+            <div class="loopsign-quad-col-head">✅ Integrated</div>
+            ${done.length ? done.map(t=>loopsignItemHtml(t,true)).join('') : '<div class="loopsign-quad-empty">Nothing yet.</div>'}
+          </div>
+          <div>
+            <div class="loopsign-quad-col-head">🔧 Working on</div>
+            ${pending.length ? pending.map(t=>loopsignItemHtml(t,false)).join('') : '<div class="loopsign-quad-empty">Nothing pending.</div>'}
+          </div>
         </div>
       </div>
     `;
   }
 
-  // Small helpers so the (light-mode-only) LoopSign export doesn't depend on the page's
-  // current CSS theme variables, which may be swapped to dark.
-  function catBgFor(c){ return {Hardware:'#F6ECDA',Firmware:'#E1F3F1',Software:'#EFE7FB',Interoperability:'#FBE5EF'}[c] || '#EEF0F2'; }
-  function catColorFor(c){ return {Hardware:'#8A5A12',Firmware:'#0E7C72',Software:'#6B3FC2',Interoperability:'#B0206B'}[c] || '#6B7280'; }
-  function priBgFor(p){ return {Low:'#EEF0F2',Medium:'#FBF0DC',High:'#FBEAE8'}[p] || '#EEF0F2'; }
-  function priColorFor(p){ return {Low:'#6B7280',Medium:'#B5730B',High:'#C0392B'}[p] || '#6B7280'; }
-
   function renderLoopSignContent(tickets){
-    const done = tickets.filter(t=>t.status==='Done');
-    const pending = tickets.filter(t=>t.status!=='Done');
     const content = $('#loopsignContent');
+    const quadrants = SERIES.map(s => loopsignQuadrantHtml(s, tickets.filter(t=>t.series===s))).join('');
     content.innerHTML = `
       <div class="loopsign-header">
         <h1>Service Ticket Tracker — Status Overview</h1>
         <div class="loopsign-date">Generated ${new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'})}</div>
       </div>
-      <div class="loopsign-columns">
-        <div>
-          <div class="loopsign-col-head done">✅ Integrated (${done.length})</div>
-          ${done.length ? done.map(loopsignCardHtml).join('') : '<div class="loopsign-empty-col">Nothing here yet.</div>'}
-        </div>
-        <div>
-          <div class="loopsign-col-head pending">❌ Not yet (${pending.length})</div>
-          ${pending.length ? pending.map(loopsignCardHtml).join('') : '<div class="loopsign-empty-col">Nothing pending.</div>'}
-        </div>
-      </div>
+      <div class="loopsign-grid">${quadrants}</div>
     `;
   }
 
