@@ -440,24 +440,33 @@
   .loopsign-header h1 { font-size: 26px; margin: 0 0 6px; font-weight: 800; color: #F3F1EA; }
   .loopsign-header .loopsign-date { font-size: 13px; color: #9BA0AE; }
 
-  .loopsign-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; background: #EDEAE0; padding: 18px; border-radius: 10px; }
-  .loopsign-quadrant { background: #C7CFD9; border-radius: 8px; padding: 22px 26px 26px; min-height: 220px; box-sizing: border-box; }
+  /* Hero (busiest series, most tickets) on the left gets full height; the rest stack
+     compactly on the right — sized to how much each actually has going on, not a rigid
+     equal-size grid that leaves empty space next to a quadrant hitting "+N more". */
+  .loopsign-grid { display: flex; gap: 18px; background: #EDEAE0; padding: 18px; border-radius: 10px; }
+  .loopsign-hero { flex: 2; min-width: 0; }
+  .loopsign-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+  .loopsign-side .loopsign-quadrant { flex: 1; }
+  .loopsign-quadrant { background: #C7CFD9; border-radius: 8px; padding: 22px 26px 26px; min-height: 220px; box-sizing: border-box; height: 100%; }
 
   /* Applied only while capturing the PNG: makes the content fill the fixed 3840x2160
      export canvas exactly, edge-to-edge, instead of shrink-wrapping to its own content
      height — that mismatch was leaving blank canvas around the LoopSign frame. */
   .loopsign-content.export-mode {
     display: flex; flex-direction: column; border-radius: 0; margin: 0; max-width: none; height: 100%;
-    overflow: hidden; /* belt-and-suspenders: nothing can ever push a row off the fixed canvas */
+    overflow: hidden; /* belt-and-suspenders: nothing can ever push content off the fixed canvas */
   }
   .loopsign-content.export-mode .loopsign-header { flex: none; margin-bottom: 36px; }
   .loopsign-content.export-mode .loopsign-header h1 { font-size: 40px; }
   .loopsign-content.export-mode .loopsign-header .loopsign-date { font-size: 18px; }
-  /* min-height:0 / minmax(0,1fr) everywhere in this chain: without it, flex/grid items refuse
-     to shrink below their content's natural size, so a quadrant with lots of tickets would grow
-     taller than its allotted row and push subsequent rows (e.g. General projects) off-canvas. */
-  .loopsign-content.export-mode .loopsign-grid { flex: 1; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
-  .loopsign-content.export-mode .loopsign-quadrant { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+  /* min-height:0 everywhere in this chain: without it, flex items refuse to shrink below
+     their content's natural size, so a quadrant with lots of tickets would grow taller than
+     its allotted space and push other content off-canvas. */
+  .loopsign-content.export-mode .loopsign-grid { flex: 1; min-height: 0; }
+  .loopsign-content.export-mode .loopsign-hero,
+  .loopsign-content.export-mode .loopsign-side { min-height: 0; }
+  .loopsign-content.export-mode .loopsign-side .loopsign-quadrant { min-height: 0; }
+  .loopsign-content.export-mode .loopsign-quadrant { display: flex; flex-direction: column; }
   .loopsign-content.export-mode .loopsign-quad-cols { flex: 1; min-height: 0; }
   .loopsign-content.export-mode .loopsign-quad-cols > div { min-height: 0; display: flex; flex-direction: column; }
   .loopsign-content.export-mode .loopsign-quad-title { font-size: 30px; flex: none; }
@@ -465,6 +474,13 @@
   .loopsign-content.export-mode .loopsign-quad-items { flex: 1; min-height: 0; overflow: hidden; }
   .loopsign-content.export-mode .loopsign-quad-item { font-size: 17px; margin-bottom: 18px; }
   .loopsign-content.export-mode .loopsign-quad-item .fw { font-size: 14px; }
+  .loopsign-content.export-mode .loopsign-hero .loopsign-quad-title { font-size: 36px; }
+  .loopsign-content.export-mode .loopsign-hero .loopsign-quad-col-head { font-size: 19px; }
+  .loopsign-content.export-mode .loopsign-hero .loopsign-quad-item { font-size: 19px; margin-bottom: 20px; }
+  .loopsign-content.export-mode .loopsign-side .loopsign-quad-title { font-size: 20px; margin-bottom: 8px; }
+  .loopsign-content.export-mode .loopsign-side .loopsign-quad-col-head { font-size: 13px; margin-bottom: 6px; }
+  .loopsign-content.export-mode .loopsign-side .loopsign-quad-item { font-size: 13px; margin-bottom: 10px; }
+  .loopsign-content.export-mode .loopsign-side .loopsign-quad-item .fw { font-size: 11px; }
   .loopsign-content.export-mode .loopsign-quad-more { flex: none; font-size: 13px; }
   .loopsign-quad-title { text-align: center; font-size: 22px; font-weight: 800; color: #14161F; margin: 0 0 16px; }
   .loopsign-quad-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -2761,13 +2777,15 @@
   }
 
   // Caps how many items a column lists before switching to a "+N more" line — this is what
-  // guarantees a quadrant can never grow taller than its allotted space and push later rows
-  // (e.g. General projects) off the fixed export canvas.
-  const LOOPSIGN_MAX_ITEMS = 6;
+  // guarantees a quadrant can never grow taller than its allotted space and push other
+  // content off the fixed export canvas. The hero quadrant has much more room than a
+  // compact side one, so it gets a higher cap before falling back to "+N more".
+  const LOOPSIGN_MAX_ITEMS_HERO = 10;
+  const LOOPSIGN_MAX_ITEMS_SIDE = 4;
 
-  function loopsignColumnHtml(list, isDone, emptyText){
+  function loopsignColumnHtml(list, isDone, emptyText, maxItems){
     if (list.length === 0) return `<div class="loopsign-quad-empty">${emptyText}</div>`;
-    const shown = list.slice(0, LOOPSIGN_MAX_ITEMS);
+    const shown = list.slice(0, maxItems);
     const extra = list.length - shown.length;
     return `
       <div class="loopsign-quad-items">${shown.map(t=>loopsignItemHtml(t,isDone)).join('')}</div>
@@ -2775,20 +2793,21 @@
     `;
   }
 
-  function loopsignQuadrantHtml(seriesName, tickets){
+  function loopsignQuadrantHtml(seriesName, tickets, isHero){
     const done = tickets.filter(t=>t.status==='Done');
     const pending = tickets.filter(t=>t.status!=='Done');
+    const maxItems = isHero ? LOOPSIGN_MAX_ITEMS_HERO : LOOPSIGN_MAX_ITEMS_SIDE;
     return `
       <div class="loopsign-quadrant">
         <h2 class="loopsign-quad-title">${esc(seriesName)}</h2>
         <div class="loopsign-quad-cols">
           <div>
             <div class="loopsign-quad-col-head">✅ Integrated</div>
-            ${loopsignColumnHtml(done, true, 'Nothing yet.')}
+            ${loopsignColumnHtml(done, true, 'Nothing yet.', maxItems)}
           </div>
           <div>
             <div class="loopsign-quad-col-head">🔧 Working on</div>
-            ${loopsignColumnHtml(pending, false, 'Nothing pending.')}
+            ${loopsignColumnHtml(pending, false, 'Nothing pending.', maxItems)}
           </div>
         </div>
       </div>
@@ -2797,13 +2816,23 @@
 
   function renderLoopSignContent(tickets){
     const content = $('#loopsignContent');
-    const quadrants = SERIES.map(s => loopsignQuadrantHtml(s, tickets.filter(t=>t.series===s))).join('');
+    // Busiest series (most tickets right now) gets the big hero slot; it shifts
+    // automatically as ticket volume moves between series over time.
+    const bySeries = SERIES.map(s => ({ series: s, tickets: tickets.filter(t=>t.series===s) }));
+    bySeries.sort((a,b) => b.tickets.length - a.tickets.length);
+    const hero = bySeries[0];
+    const rest = bySeries.slice(1);
+    const heroHtml = loopsignQuadrantHtml(hero.series, hero.tickets, true);
+    const sideHtml = rest.map(x => loopsignQuadrantHtml(x.series, x.tickets, false)).join('');
     content.innerHTML = `
       <div class="loopsign-header">
         <h1>Service Ticket Tracker — Status Overview</h1>
         <div class="loopsign-date">Generated ${new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'})}</div>
       </div>
-      <div class="loopsign-grid">${quadrants}</div>
+      <div class="loopsign-grid">
+        <div class="loopsign-hero">${heroHtml}</div>
+        <div class="loopsign-side">${sideHtml}</div>
+      </div>
     `;
   }
 
