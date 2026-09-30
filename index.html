@@ -448,17 +448,24 @@
      height — that mismatch was leaving blank canvas around the LoopSign frame. */
   .loopsign-content.export-mode {
     display: flex; flex-direction: column; border-radius: 0; margin: 0; max-width: none; height: 100%;
+    overflow: hidden; /* belt-and-suspenders: nothing can ever push a row off the fixed canvas */
   }
   .loopsign-content.export-mode .loopsign-header { flex: none; margin-bottom: 36px; }
   .loopsign-content.export-mode .loopsign-header h1 { font-size: 40px; }
   .loopsign-content.export-mode .loopsign-header .loopsign-date { font-size: 18px; }
-  .loopsign-content.export-mode .loopsign-grid { flex: 1; grid-auto-rows: 1fr; }
-  .loopsign-content.export-mode .loopsign-quadrant { height: 100%; display: flex; flex-direction: column; }
-  .loopsign-content.export-mode .loopsign-quad-cols { flex: 1; }
-  .loopsign-content.export-mode .loopsign-quad-title { font-size: 30px; }
-  .loopsign-content.export-mode .loopsign-quad-col-head { font-size: 17px; }
+  /* min-height:0 / minmax(0,1fr) everywhere in this chain: without it, flex/grid items refuse
+     to shrink below their content's natural size, so a quadrant with lots of tickets would grow
+     taller than its allotted row and push subsequent rows (e.g. General projects) off-canvas. */
+  .loopsign-content.export-mode .loopsign-grid { flex: 1; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+  .loopsign-content.export-mode .loopsign-quadrant { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+  .loopsign-content.export-mode .loopsign-quad-cols { flex: 1; min-height: 0; }
+  .loopsign-content.export-mode .loopsign-quad-cols > div { min-height: 0; display: flex; flex-direction: column; }
+  .loopsign-content.export-mode .loopsign-quad-title { font-size: 30px; flex: none; }
+  .loopsign-content.export-mode .loopsign-quad-col-head { font-size: 17px; flex: none; }
+  .loopsign-content.export-mode .loopsign-quad-items { flex: 1; min-height: 0; overflow: hidden; }
   .loopsign-content.export-mode .loopsign-quad-item { font-size: 17px; margin-bottom: 18px; }
   .loopsign-content.export-mode .loopsign-quad-item .fw { font-size: 14px; }
+  .loopsign-content.export-mode .loopsign-quad-more { flex: none; font-size: 13px; }
   .loopsign-quad-title { text-align: center; font-size: 22px; font-weight: 800; color: #14161F; margin: 0 0 16px; }
   .loopsign-quad-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .loopsign-quad-col-head {
@@ -469,6 +476,7 @@
   .loopsign-quad-item .key { font-family: "SF Mono", "Roboto Mono", Consolas, monospace; font-size: 10.5px; color: #4B5160; font-weight: 700; }
   .loopsign-quad-item .fw { display: block; font-size: 11px; font-weight: 700; color: #3A4CD1; margin-top: 2px; }
   .loopsign-quad-empty { font-size: 12px; color: #5B6170; font-style: italic; }
+  .loopsign-quad-more { font-size: 12px; color: #5B6170; font-style: italic; margin-top: 4px; }
 
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
@@ -2752,6 +2760,21 @@
     `;
   }
 
+  // Caps how many items a column lists before switching to a "+N more" line — this is what
+  // guarantees a quadrant can never grow taller than its allotted space and push later rows
+  // (e.g. General projects) off the fixed export canvas.
+  const LOOPSIGN_MAX_ITEMS = 6;
+
+  function loopsignColumnHtml(list, isDone, emptyText){
+    if (list.length === 0) return `<div class="loopsign-quad-empty">${emptyText}</div>`;
+    const shown = list.slice(0, LOOPSIGN_MAX_ITEMS);
+    const extra = list.length - shown.length;
+    return `
+      <div class="loopsign-quad-items">${shown.map(t=>loopsignItemHtml(t,isDone)).join('')}</div>
+      ${extra > 0 ? `<div class="loopsign-quad-more">+ ${extra} more</div>` : ''}
+    `;
+  }
+
   function loopsignQuadrantHtml(seriesName, tickets){
     const done = tickets.filter(t=>t.status==='Done');
     const pending = tickets.filter(t=>t.status!=='Done');
@@ -2761,11 +2784,11 @@
         <div class="loopsign-quad-cols">
           <div>
             <div class="loopsign-quad-col-head">✅ Integrated</div>
-            ${done.length ? done.map(t=>loopsignItemHtml(t,true)).join('') : '<div class="loopsign-quad-empty">Nothing yet.</div>'}
+            ${loopsignColumnHtml(done, true, 'Nothing yet.')}
           </div>
           <div>
             <div class="loopsign-quad-col-head">🔧 Working on</div>
-            ${pending.length ? pending.map(t=>loopsignItemHtml(t,false)).join('') : '<div class="loopsign-quad-empty">Nothing pending.</div>'}
+            ${loopsignColumnHtml(pending, false, 'Nothing pending.')}
           </div>
         </div>
       </div>
