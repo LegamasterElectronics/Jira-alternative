@@ -2776,38 +2776,27 @@
     `;
   }
 
-  // Caps how many items a column lists before switching to a "+N more" line — this is what
-  // guarantees a quadrant can never grow taller than its allotted space and push other
-  // content off the fixed export canvas. The hero quadrant has much more room than a
-  // compact side one, so it gets a higher cap before falling back to "+N more".
-  const LOOPSIGN_MAX_ITEMS_HERO = 10;
-  const LOOPSIGN_MAX_ITEMS_SIDE = 4;
-
-  function loopsignColumnHtml(list, isDone, emptyText, maxItems){
+  // Every ticket is always shown — nothing gets hidden behind a "+N more". If a quadrant
+  // has more than fits at normal size, exportLoopSignPNG() below shrinks its text instead.
+  function loopsignColumnHtml(list, isDone, emptyText){
     if (list.length === 0) return `<div class="loopsign-quad-empty">${emptyText}</div>`;
-    const shown = list.slice(0, maxItems);
-    const extra = list.length - shown.length;
-    return `
-      <div class="loopsign-quad-items">${shown.map(t=>loopsignItemHtml(t,isDone)).join('')}</div>
-      ${extra > 0 ? `<div class="loopsign-quad-more">+ ${extra} more</div>` : ''}
-    `;
+    return `<div class="loopsign-quad-items">${list.map(t=>loopsignItemHtml(t,isDone)).join('')}</div>`;
   }
 
-  function loopsignQuadrantHtml(seriesName, tickets, isHero){
+  function loopsignQuadrantHtml(seriesName, tickets){
     const done = tickets.filter(t=>t.status==='Done');
     const pending = tickets.filter(t=>t.status!=='Done');
-    const maxItems = isHero ? LOOPSIGN_MAX_ITEMS_HERO : LOOPSIGN_MAX_ITEMS_SIDE;
     return `
       <div class="loopsign-quadrant">
         <h2 class="loopsign-quad-title">${esc(seriesName)}</h2>
         <div class="loopsign-quad-cols">
           <div>
             <div class="loopsign-quad-col-head">✅ Integrated</div>
-            ${loopsignColumnHtml(done, true, 'Nothing yet.', maxItems)}
+            ${loopsignColumnHtml(done, true, 'Nothing yet.')}
           </div>
           <div>
             <div class="loopsign-quad-col-head">🔧 Working on</div>
-            ${loopsignColumnHtml(pending, false, 'Nothing pending.', maxItems)}
+            ${loopsignColumnHtml(pending, false, 'Nothing pending.')}
           </div>
         </div>
       </div>
@@ -2822,8 +2811,8 @@
     bySeries.sort((a,b) => b.tickets.length - a.tickets.length);
     const hero = bySeries[0];
     const rest = bySeries.slice(1);
-    const heroHtml = loopsignQuadrantHtml(hero.series, hero.tickets, true);
-    const sideHtml = rest.map(x => loopsignQuadrantHtml(x.series, x.tickets, false)).join('');
+    const heroHtml = loopsignQuadrantHtml(hero.series, hero.tickets);
+    const sideHtml = rest.map(x => loopsignQuadrantHtml(x.series, x.tickets)).join('');
     content.innerHTML = `
       <div class="loopsign-header">
         <h1>Service Ticket Tracker — Status Overview</h1>
@@ -2853,6 +2842,34 @@
     setTimeout(() => { overlay.style.display = 'none'; }, 200);
   }
 
+  // Shrinks a column's item text/spacing (scaling both down together) until everything in
+  // it fits its allotted height, or until it hits a readability floor. Nothing gets hidden —
+  // this is what replaced capping the list at N items with a "+N more" line.
+  function shrinkColumnToFit(col){
+    const items = col.querySelectorAll('.loopsign-quad-item');
+    if (items.length === 0 || col.scrollHeight <= col.clientHeight) return;
+    const first = items[0];
+    const baseFont = parseFloat(getComputedStyle(first).fontSize);
+    const baseMargin = parseFloat(getComputedStyle(first).marginBottom);
+    const fwFirst = first.querySelector('.fw');
+    const baseFw = fwFirst ? parseFloat(getComputedStyle(fwFirst).fontSize) : baseFont * 0.75;
+    const MIN_SCALE = 0.4;
+    let scale = 1;
+    while (col.scrollHeight > col.clientHeight && scale > MIN_SCALE){
+      scale -= 0.04;
+      items.forEach(it => {
+        it.style.fontSize = (baseFont * scale).toFixed(1) + 'px';
+        it.style.marginBottom = (baseMargin * scale).toFixed(1) + 'px';
+        const fw = it.querySelector('.fw');
+        if (fw) fw.style.fontSize = (baseFw * scale).toFixed(1) + 'px';
+      });
+    }
+  }
+
+  function shrinkLoopSignToFit(){
+    $('#loopsignContent').querySelectorAll('.loopsign-quad-items').forEach(shrinkColumnToFit);
+  }
+
   async function exportLoopSignPNG(){
     const content = $('#loopsignContent');
     const btn = $('#loopsignExportBtn');
@@ -2866,6 +2883,7 @@
     content.style.maxWidth = 'none';
     content.classList.add('export-mode');
     await new Promise(r => setTimeout(r, 80)); // let layout settle at the new size
+    shrinkLoopSignToFit();
     try {
       const canvas = await html2canvas(content, { backgroundColor: '#14161F', scale: 1, useCORS: true, width: 3840, height: 2160 });
       const link = document.createElement('a');
