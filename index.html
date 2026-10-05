@@ -59,6 +59,7 @@
     --rel-planned: #6B7280;
     --rel-progress: #2C4CBE;
     --rel-released: #1E8A4C;
+    --rel-notreleased: #C0392B;
 
     --radius: 10px;
     --shadow: 0 1px 2px rgba(20,24,38,0.04), 0 1px 8px rgba(20,24,38,0.05);
@@ -105,6 +106,7 @@
     --rel-planned: #9A9FB0;
     --rel-progress: #7C89F2;
     --rel-released: #4FCE8A;
+    --rel-notreleased: #FF9086;
 
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 12px rgba(0,0,0,0.35);
   }
@@ -359,6 +361,13 @@
   .release-progress { margin-left: auto; font-size: 12px; color: var(--ink-muted); font-weight: 600; }
   .release-actions { display: flex; gap: 4px; }
   .release-notes { font-size: 12.5px; color: var(--ink-muted); margin-top: 8px; }
+  .release-card.not-released { border-left: 4px solid var(--rel-notreleased); }
+  .release-card.not-released .release-version { text-decoration: line-through; opacity: 0.7; }
+  .release-warn {
+    margin-top: 10px; font-size: 12.5px; font-weight: 600; color: var(--status-blocked);
+    background: var(--type-bug-bg); border-radius: 8px; padding: 8px 10px; line-height: 1.4;
+  }
+  .release-tag.warn { color: var(--status-blocked); }
   .release-tickets { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
   .release-ticket-row {
     display: flex; align-items: center; gap: 9px; font-size: 12.5px; padding: 7px 9px;
@@ -698,7 +707,7 @@
       <button id="themeToggleBtn" class="ghost theme-toggle-btn" type="button">🌙 Dark mode</button>
       <button id="loopsignBtn" class="ghost" title="Open a status overview formatted for LoopSign (all series)">📺 LoopSign overview</button>
       <button id="exportBtn" class="ghost" title="Download all tickets and releases (all series) as a JSON backup">Export</button>
-      <div class="app-version" title="Interface version">UI v3.1 · <a href="index-v3.0.html" style="color:inherit">previous version</a></div>
+      <div class="app-version" title="Interface version">UI v3.2 · <a href="index-v3.1.html" style="color:inherit">previous version</a></div>
     </div>
   </nav>
 
@@ -898,7 +907,10 @@
     { id: 'Planned', color: 'var(--rel-planned)' },
     { id: 'In Progress', color: 'var(--rel-progress)' },
     { id: 'Released', color: 'var(--rel-released)' },
+    { id: 'Not released', color: 'var(--rel-notreleased)' },   // built, but pulled/never shipped (e.g. bugs found)
   ];
+  const RELEASE_CLOSED = ['Released', 'Not released'];          // finished one way or the other: never "overdue"
+  const NOT_RELEASED = 'Not released';
   const CATEGORIES = ['Hardware','Firmware','Software','Interoperability'];
   const PRIORITIES = ['Low','Medium','High'];
   const catClass = { Hardware:'cat-hardware', Firmware:'cat-firmware', Software:'cat-software', Interoperability:'cat-interop' };
@@ -2218,7 +2230,7 @@
     const todayStr = new Date().toISOString().slice(0,10);
     SERIES.forEach(s => {
       const count = data.tickets.filter(t=>t.series===s).length;
-      const hasOverdue = data.releases.some(r => r.series===s && r.status!=='Released' && r.targetDate && r.targetDate < todayStr);
+      const hasOverdue = data.releases.some(r => r.series===s && !RELEASE_CLOSED.includes(r.status) && r.targetDate && r.targetDate < todayStr);
       const item = el('div','series-item' + (s===selectedSeries ? ' active' : ''));
       item.innerHTML = `<span>${esc(seriesLabel(s))}${hasOverdue ? ' <span class="overdue-dot" title="Has an overdue firmware release"></span>' : ''}</span><span class="scount">${count}</span>`;
       item.addEventListener('click', () => {
@@ -2364,6 +2376,11 @@
     });
   }
 
+  function releaseNotReleased(releaseId){
+    const r = data.releases.find(x=>x.id===releaseId);
+    return !!(r && r.status === NOT_RELEASED);
+  }
+
   function releaseVersionFor(releaseId){
     const r = data.releases.find(x=>x.id===releaseId);
     return r ? r.version : null;
@@ -2377,7 +2394,7 @@
       <div class="card-top"><span class="ticket-key mono">${t.id}</span></div>
       <p class="card-title">${esc(t.title)}</p>
       <div class="card-badges">${ticketBadges(t)}</div>
-      ${relVersion ? `<div class="release-tag">→ Fix targeted for v${esc(relVersion)}</div>` : ''}
+      ${relVersion ? (releaseNotReleased(t.release) ? `<div class="release-tag warn">⚠ v${esc(relVersion)} was not released — retarget</div>` : `<div class="release-tag">→ Fix targeted for v${esc(relVersion)}</div>`) : ''}
       <div class="card-foot">
         <span>${t.assignee ? esc(t.assignee) : '<span class="unassigned">unassigned</span>'}${(t.comments&&t.comments.length) ? ` · 💬 ${t.comments.length}` : ''}</span>
         ${t.assignee ? `<span class="avatar">${initials(t.assignee)}</span>` : ''}
@@ -2561,7 +2578,7 @@
         <td></td>
         <td>${t.assignee ? esc(t.assignee) : '<span class="unassigned">—</span>'}</td>
         <td class="mono">${t.fwVersion ? esc(t.fwVersion) : '—'}</td>
-        <td class="mono">${relVersion ? 'v'+esc(relVersion) : '—'}</td>
+        <td class="mono">${relVersion ? 'v'+esc(relVersion) + (releaseNotReleased(t.release) ? ' <span class="unassigned">(not released)</span>' : '') : '—'}</td>
         <td>${fmtDate(t.updatedAt)}</td>
       `;
       const statusTd = tr.children[5];
@@ -2608,9 +2625,10 @@
       const done = linked.filter(t => t.status === 'Done').length;
       const rs = RELEASE_STATUSES.find(s=>s.id===r.status) || RELEASE_STATUSES[0];
       const todayStr = new Date().toISOString().slice(0,10);
-      const isOverdue = r.targetDate && r.status !== 'Released' && r.targetDate < todayStr;
+      const isOverdue = r.targetDate && !RELEASE_CLOSED.includes(r.status) && r.targetDate < todayStr;
+      const notReleased = r.status === NOT_RELEASED;
 
-      const card = el('div','release-card' + (isOverdue ? ' overdue' : ''));
+      const card = el('div','release-card' + (isOverdue ? ' overdue' : '') + (notReleased ? ' not-released' : ''));
       card.innerHTML = `
         <div class="release-head">
           <span class="release-version">v${esc(r.version)}</span>
@@ -2623,7 +2641,8 @@
             <button class="ghost small danger" data-act="delete">Delete</button>
           </span>
         </div>
-        ${r.notes ? `<div class="release-notes">${esc(r.notes)}</div>` : ''}
+        ${notReleased && linked.length ? `<div class="release-warn" role="note">⚠ ${linked.length} linked ticket${linked.length===1?'':'s'} still point${linked.length===1?'s':''} to this firmware, which was not released. Retarget ${linked.length===1?'it':'them'} to another release so they show up under the right version.</div>` : ''}
+        ${r.notes ? `<div class="release-notes">${notReleased ? '<strong>Reason:</strong> ' : ''}${esc(r.notes)}</div>` : (notReleased ? `<div class="release-notes"><em>No reason noted yet — add one via Edit.</em></div>` : '')}
         ${r.downloadUrl ? `<div class="release-download"><a href="${esc(r.downloadUrl)}" target="_blank" rel="noopener">⬇ Download firmware v${esc(r.version)}</a></div>` : ''}
         <div class="release-tickets"></div>
       `;
@@ -2664,7 +2683,8 @@
       .sort((a,b) => (a.targetDate||'9999').localeCompare(b.targetDate||'9999'));
     let html = `<option value="" ${!selectedId?'selected':''}>No release (backlog)</option>`;
     opts.forEach(r => {
-      html += `<option value="${r.id}" ${selectedId===r.id?'selected':''}>v${esc(r.version)} — ${esc(r.status)} (${fmtDate(r.targetDate)})</option>`;
+      const blocked = r.status === NOT_RELEASED && selectedId !== r.id;   // keep an existing link visible, but don't allow new ones
+      html += `<option value="${r.id}" ${selectedId===r.id?'selected':''} ${blocked?'disabled':''}>v${esc(r.version)} — ${esc(r.status)}${r.status===NOT_RELEASED?'':' ('+fmtDate(r.targetDate)+')'}</option>`;
     });
     return html;
   }
@@ -2700,7 +2720,7 @@
           <input type="url" id="r_download" value="${r? esc(r.downloadUrl||''):''}" placeholder="https://…">
         </div>
         <div class="field">
-          <label for="r_notes">Notes (optional)</label>
+          <label for="r_notes" id="r_notesLabel">Notes (optional)</label>
           <textarea id="r_notes" placeholder="What's the focus of this release?">${r? esc(r.notes||''):''}</textarea>
         </div>
 
@@ -2717,6 +2737,13 @@
     requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
     $('#closeModalBtn').addEventListener('click', closeModal);
     $('#cancelBtn').addEventListener('click', closeModal);
+    const syncReasonLabel = () => {
+      const nr = $('#r_status').value === NOT_RELEASED;
+      $('#r_notesLabel').textContent = nr ? 'Reason it was not released' : 'Notes (optional)';
+      $('#r_notes').placeholder = nr ? 'e.g. critical bugs found in final testing — fixes move to the next release' : "What's the focus of this release?";
+    };
+    $('#r_status').addEventListener('change', syncReasonLabel);
+    syncReasonLabel();
     $('#saveReleaseBtn').addEventListener('click', saveRelease);
     if (r) $('#deleteReleaseBtn').addEventListener('click', () => deleteRelease(r.id));
     overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
@@ -3221,6 +3248,9 @@
   // what it's currently targeted for (falling back to "not scheduled" if no release is linked).
   function loopsignFwLabel(t, isDone){
     const relVersion = t.release ? releaseVersionFor(t.release) : null;
+    if (relVersion && releaseNotReleased(t.release)){
+      return isDone ? ('v' + relVersion + ' (not released)') : ('Not scheduled (v' + relVersion + ' not released)');
+    }
     if (isDone) return relVersion ? ('v' + relVersion) : (t.fwVersion ? t.fwVersion : '—');
     return relVersion ? ('Target: v' + relVersion) : 'Not scheduled';
   }
