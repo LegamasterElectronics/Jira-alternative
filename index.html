@@ -672,6 +672,63 @@
     .series-item { flex: none; margin-bottom: 0; margin-right: 4px; }
     .sidebar-foot { display: none; }
   }
+
+  /* ---- v3.3: create dialog vs issue view ---- */
+  .req { color: var(--status-blocked); font-weight: 800; }
+  [hidden] { display: none !important; }
+  .modal.create-modal { max-width: 560px; }
+  .req-note { margin-top: 0; }
+  details.more-fields { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 10px; }
+  details.more-fields summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--accent); padding: 4px 0; }
+  .create-foot { position: sticky; bottom: -24px; background: var(--surface); margin-bottom: -8px; padding-bottom: 8px; }
+  .create-another { display: flex; align-items: center; gap: 6px; margin: 0 !important; font-weight: 600 !important; cursor: pointer; }
+  .modal .create-another input { width: auto; }
+  .msel { position: relative; }
+  .msel-trigger { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 13.5px; cursor: pointer; min-height: 38px; }
+  .msel-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .modal .msel-trigger { background: var(--surface); color: var(--ink); box-shadow: none; }
+  .modal .msel-trigger:hover { background: var(--muted); }
+  .iv-crumb strong, .iv-top-actions button { white-space: nowrap; }
+  .iv-crumb { min-width: 0; flex-wrap: wrap; }
+  .msel-caret { color: var(--ink-faint); }
+  .msel-panel { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); max-height: 260px; overflow-y: auto; padding: 4px; }
+  .msel-tools { display: flex; gap: 14px; padding: 4px 8px 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .modal label.msel-opt { display: flex; align-items: center; gap: 9px; margin: 0; padding: 8px; border-radius: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink); cursor: pointer; }
+  .msel-opt:hover { background: var(--muted); }
+  .msel-opt input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+  .modal.issue-view { max-width: 1040px; padding: 0; overflow: visible; }
+  .iv-top { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  .iv-crumb { font-size: 13px; color: var(--ink-muted); display: flex; gap: 8px; align-items: center; }
+  .iv-crumb strong { color: var(--ink); }
+  .iv-top-actions { display: flex; gap: 4px; align-items: center; }
+  .iv-grid { display: grid; grid-template-columns: minmax(0,1fr) 330px; }
+  .iv-main { padding: 20px 24px 28px; min-width: 0; }
+  .iv-side { padding: 20px 20px 24px; border-left: 1px solid var(--border); background: var(--surface-2); border-radius: 0 0 14px 0; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+  .modal.issue-view textarea.iv-title { resize: none; overflow: hidden; line-height: 1.25; min-height: 0; font-size: 22px; font-weight: 800; border: 1px solid transparent; background: transparent; padding: 6px 8px; margin-left: -8px; width: calc(100% + 8px); border-radius: 8px; }
+  .modal.issue-view textarea.iv-title:hover { background: var(--muted); }
+  .modal.issue-view textarea.iv-title:focus { background: var(--surface); border-color: var(--accent); }
+  .iv-statusrow { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; }
+  .modal.issue-view select.iv-status { width: auto; font-weight: 700; color: var(--on-status); border: none; border-radius: 20px; padding: 6px 14px; cursor: pointer; }
+  .iv-hint { font-size: 11.5px; color: var(--ink-faint); }
+  .iv-section { margin-top: 22px; }
+  .iv-section h3, .iv-card h3 { font-size: 13px; font-weight: 800; margin: 0 0 8px; }
+  .iv-text { white-space: pre-wrap; word-wrap: break-word; font-size: 14px; line-height: 1.55; padding: 8px 10px; margin: 0 -10px; border-radius: 8px; cursor: text; min-height: 38px; }
+  .iv-text:hover, .iv-text:focus-visible { background: var(--muted); outline: none; }
+  .iv-text.empty { color: var(--ink-faint); }
+  .modal textarea.iv-ta { width: 100%; font-size: 14px; line-height: 1.55; }
+  .iv-card { width: 100%; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 14px; }
+  .iv-row { margin-bottom: 11px; }
+  .iv-row:last-child { margin-bottom: 0; }
+  .iv-row > label { margin-bottom: 3px; }
+  .iv-meta { font-size: 11.5px; color: var(--ink-faint); line-height: 1.6; }
+  .issue-view .activity-feed { max-height: none; }
+  @media (max-width: 760px) {
+    .modal.issue-view { max-width: 100%; }
+    .iv-grid { grid-template-columns: 1fr; }
+    .iv-side { border-left: none; border-top: 1px solid var(--border); border-radius: 0 0 14px 14px; }
+    .iv-main { padding: 16px 16px 24px; }
+    .overlay { padding: 12px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -707,7 +764,7 @@
       <button id="themeToggleBtn" class="ghost theme-toggle-btn" type="button">🌙 Dark mode</button>
       <button id="loopsignBtn" class="ghost" title="Open a status overview formatted for LoopSign (all series)">📺 LoopSign overview</button>
       <button id="exportBtn" class="ghost" title="Download all tickets and releases (all series) as a JSON backup">Export</button>
-      <div class="app-version" title="Interface version">UI v3.2 · <a href="index-v3.1.html" style="color:inherit">previous version</a></div>
+      <div class="app-version" title="Interface version">UI v3.3 · <a href="index-v3.2.html" style="color:inherit">previous version</a></div>
     </div>
   </nav>
 
@@ -852,7 +909,7 @@
   // NOTE on 'Explore': the stored series key stays 'Explore' (so existing tickets, EXP-xx IDs,
   // counters and the Sheet need no data migration and older cached versions keep working);
   // the board is *displayed* as 'Explore 2' via SERIES_LABEL. Use seriesLabel() for anything shown.
-  const SERIES = ['Evolve Dynamic and Pro','Evolve 2','Explore','Explore 3','Discover 3','Navigator','General projects'];
+  const SERIES = ['Evolve Dynamic and Pro','Evolve 2','Explore','Explore 3','Discover 2','Discover 3','Navigator','General projects'];
   const SERIES_LABEL = { 'Explore': 'Explore 2' };
   const seriesLabel = (s) => SERIES_LABEL[s] || s;
   const SERIES_PREFIX = {
@@ -860,6 +917,7 @@
     'Evolve 2': 'EV2',
     'Explore': 'EXP',
     'Explore 3': 'EXP3',
+    'Discover 2': 'DISC2',
     'Discover 3': 'DISC3',
     'Navigator': 'NAV',
     'General projects': 'GEN',
@@ -872,6 +930,7 @@
     'Evolve 2': ['ETX5540','ETX6540','ETX7540','ETX8640'],
     'Explore': ['EXP6510','EXP7510','EXP8610'],
     'Explore 3': ['EXP6520','EXP7520','EXP8620'],
+    'Discover 2': ['DIS4310','DIS5510','DIS6510','DIS7510','DIS8610','DIS9810'],
     'Discover 3': ['DIS4320','DIS5520','DIS6520','DIS7520','DIS8620','DIS9820'],
   };
   const ALL_MODELS_TOKEN = 'All models';
@@ -883,6 +942,7 @@
     'Evolve 2': 'iPrima',
     'Explore': 'iPrima',
     'Explore 3': 'iPrima',
+    'Discover 2': 'CVTE',
     'Discover 3': 'CVTE',
     'Navigator': '',
     'General projects': '',
@@ -2783,145 +2843,32 @@
     toast('Release deleted');
   }
 
-  // ---- Ticket Modal ----
+  // ---- Ticket dialogs ----
+  // Two deliberately different screens (like Jira): a compact "Create ticket" dialog with required
+  // markers, and a full issue view for existing tickets where every field autosaves on change.
+  let attachCommitHook = null;   // set while viewing a ticket: called after attachment add/remove
+  let modelsCtl = null;          // current models dropdown { close(), isOpen() }
+
   function openModal(id){
-    editingId = id || null;
-    const t = id ? data.tickets.find(x=>x.id===id) : null;
-    draftAttachments = t ? JSON.parse(JSON.stringify(t.attachments||[])) : [];
-    populateNameDatalists();
-    const formSeries = t ? t.series : selectedSeries;
+    if (id) openTicketView(id); else openCreateModal();
+  }
 
+  function overlayShow(html){
     const overlay = $('#modalOverlay');
-    overlay.innerHTML = `
-      <div class="modal${t ? ' wide' : ''}" role="dialog" aria-modal="true">
-        <div class="modal-head">
-          <div class="modal-head-title">
-            <h2>${t ? `${t.id} — edit` : 'New ticket'}</h2>
-            ${t ? `<span class="status-pill-inline" id="headerStatusPill" style="background:${STATUSES.find(s=>s.id===t.status).color}">${esc(t.status)}</span>` : ''}
-          </div>
-          <div style="display:flex; gap:4px; align-items:center;">
-            ${t ? `<button class="ghost small" id="copyLinkBtn" title="Copy a link that opens this ticket directly">🔗 Copy link</button>` : ''}
-            <button class="ghost" id="closeModalBtn" aria-label="Close">✕</button>
-          </div>
-        </div>
-        ${t ? `<div class="meta-note">Created ${fmtDate(t.createdAt)} · last updated ${fmtDate(t.updatedAt)}</div>` : ''}
-
-        <div class="modal-body">
-        <div class="modal-left">
-
-        <div class="field">
-          <label for="f_series">Series</label>
-          <select id="f_series">${SERIES.map(s=>`<option value="${esc(s)}" ${formSeries===s?'selected':''}>${esc(seriesLabel(s))}</option>`).join('')}</select>
-          <div class="meta-note" id="f_manufacturerNote">${SERIES_MANUFACTURER[formSeries] ? 'Manufacturer: ' + esc(SERIES_MANUFACTURER[formSeries]) : ''}</div>
-        </div>
-
-        <div class="field">
-          <label>Type</label>
-          <div class="radio-group" id="typeGroup">
-            <label class="radio-opt sel-bug ${(!t || t.type==='Bug')?'selected':''}"><input type="radio" name="type" value="Bug" ${(!t||t.type==='Bug')?'checked':''}>Bug</label>
-            <label class="radio-opt sel-fw ${(t && t.type==='Firmware request')?'selected':''}"><input type="radio" name="type" value="Firmware request" ${(t&&t.type==='Firmware request')?'checked':''}>Firmware request</label>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="f_title">Title</label>
-          <input type="text" id="f_title" value="${t? esc(t.title):''}" placeholder="Short, clear summary">
-        </div>
-
-        <div class="field">
-          <label for="f_desc">Description</label>
-          <textarea id="f_desc" placeholder="What's the issue — expected vs. actual behavior…">${t? esc(t.description):''}</textarea>
-        </div>
-
-        <div class="field">
-          <label for="f_steps">Steps to reproduce</label>
-          <textarea id="f_steps" placeholder="1. Open …&#10;2. Tap …&#10;3. …">${t? esc(t.stepsToReproduce||''):''}</textarea>
-        </div>
-
-        <div class="field" id="modelsField"></div>
-        <input type="hidden" id="f_product" value="${t? esc(t.product||''):''}">
-
-        <div class="field row3">
-          <div>
-            <label for="f_category">Category</label>
-            <select id="f_category">${CATEGORIES.map(c=>`<option ${t&&t.category===c?'selected':''}>${c}</option>`).join('')}</select>
-          </div>
-          <div>
-            <label for="f_priority">Priority</label>
-            <select id="f_priority">${PRIORITIES.map(p=>`<option ${(t?t.priority===p:p==='Low')?'selected':''}>${p}</option>`).join('')}</select>
-          </div>
-          <div>
-            <label for="f_status">Status</label>
-            <select id="f_status">${STATUSES.map(s=>`<option ${t&&t.status===s.id?'selected':''}>${s.id}</option>`).join('')}</select>
-          </div>
-        </div>
-
-        <div class="field row2">
-          <div>
-            <label for="f_reporter">Reporter</label>
-            <input type="text" id="f_reporter" list="namesList" value="${t? esc(t.reporter) : esc(currentUser||'')}" placeholder="Name">
-          </div>
-          <div>
-            <label for="f_assignee">Assignee (optional)</label>
-            <input type="text" id="f_assignee" list="namesList" value="${t? esc(t.assignee||''):''}" placeholder="Name">
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="f_fw">FW version reported</label>
-          <input type="text" id="f_fw" value="${t? esc(t.fwVersion||''):''}" placeholder="e.g. 2.14.3">
-        </div>
-
-        <div class="field">
-          <label for="f_release">Fix targeted for firmware release (optional)</label>
-          <select id="f_release">${buildReleaseOptions(formSeries, t ? t.release : '')}</select>
-        </div>
-
-        <div class="field">
-          <label for="f_zendesk">Zendesk reference (number or link)</label>
-          <input type="text" id="f_zendesk" value="${t? esc(t.zendeskRef||''):''}" placeholder="e.g. #12345 or full URL">
-        </div>
-
-        <div class="field">
-          <label>Attachments</label>
-          <div class="attach-list" id="attachList"></div>
-          <input type="file" id="attachFileInput" multiple style="display:none;">
-          <button id="attachUploadBtn" class="attach-big-btn" type="button">
-            <span class="attach-big-btn-icon">＋</span>
-            <span>Add attachments</span>
-          </button>
-          <div class="meta-note attach-upload-hint" id="attachUploadStatus">Photos, screenshots, or files — up to 8MB each</div>
-        </div>
-
-        </div>
-        ${t ? `
-        <div class="modal-right">
-          <div class="comments-header">Comments and activity</div>
-          <div class="comment-input-block">
-            <div class="name-row commenting-as">Commenting as <strong>${esc(currentUser||'you')}</strong><span class="switch-link" id="commentSwitchUser">not you?</span></div>
-            <textarea id="c_text" placeholder="Write a comment…"></textarea>
-            <div class="comment-submit-row"><button id="c_addBtn" class="primary small" type="button">Comment</button></div>
-          </div>
-          <div class="activity-feed" id="activityFeed"></div>
-        </div>
-        ` : ''}
-        </div>
-
-        <div class="modal-foot">
-          <div>${t ? '<button class="danger ghost" id="deleteBtn" type="button">Delete ticket</button>' : '<span></span>'}</div>
-          <div style="display:flex; gap:8px;">
-            <button class="ghost" id="cancelBtn" type="button">Cancel</button>
-            <button class="primary" id="saveBtn" type="button">${t?'Save':'Create ticket'}</button>
-          </div>
-        </div>
-      </div>
-    `;
+    overlay.innerHTML = html;
     overlay.style.display = 'flex';
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      overlay.classList.add('open');
-      positionRadioIndicator(overlay);
-    }));
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
+    overlay.onmousedown = e => { if (e.target === overlay) closeModal(); };
+    return overlay;
+  }
 
+  function typeRadioHtml(t){
+    return `<div class="radio-group" id="typeGroup">
+      <label class="radio-opt sel-bug ${(!t || t.type==='Bug')?'selected':''}"><input type="radio" name="type" value="Bug" ${(!t||t.type==='Bug')?'checked':''}>Bug</label>
+      <label class="radio-opt sel-fw ${(t && t.type==='Firmware request')?'selected':''}"><input type="radio" name="type" value="Firmware request" ${(t&&t.type==='Firmware request')?'checked':''}>Firmware request</label>
+    </div>`;
+  }
+  function wireTypeRadios(overlay){
     overlay.querySelectorAll('.radio-opt').forEach(opt => {
       opt.addEventListener('click', () => {
         overlay.querySelectorAll('.radio-opt').forEach(o=>o.classList.remove('selected'));
@@ -2930,102 +2877,376 @@
         positionRadioIndicator(overlay);
       });
     });
+  }
 
-    renderModelsField($('#f_series').value, $('#f_product').value, !t);
+  function refreshBehindModal(){
+    renderSidebar();
+    populateAssigneeFilter();
+    render();
+  }
+
+  // Autosave one field of an existing ticket (issue view).
+  async function commitTicketField(t, field, newValue, logFn){
+    if ((t[field] || '') === (newValue || '')) return false;
+    const before = t[field];
+    t[field] = newValue;
+    t.updatedAt = new Date().toISOString();
+    if (logFn) logActivity(t, logFn(before, newValue));
+    persist();
+    toast('Saved', 'success');
+    const u = $('#ivUpdated'); if (u) u.textContent = fmtDate(t.updatedAt);
+    renderActivityFeed(t.id);
+    refreshBehindModal();
+    return true;
+  }
+  const logStatus   = (b,a) => `Status changed from "${b}" to "${a}"`;
+  const logAssignee = (b,a) => `Assignee changed from "${b || 'unassigned'}" to "${a || 'unassigned'}"`;
+  const logRelease  = (b,a) => {
+    const oldV = b ? releaseVersionFor(b) : null, newV = a ? releaseVersionFor(a) : null;
+    return `Firmware release changed from ${oldV ? 'v'+oldV : 'backlog'} to ${newV ? 'v'+newV : 'backlog'}`;
+  };
+
+  // ---------- CREATE ----------
+  function openCreateModal(){
+    editingId = null;
+    draftAttachments = [];
+    attachCommitHook = null;
+    populateNameDatalists();
+    const formSeries = selectedSeries;
+    const overlay = overlayShow(`
+      <div class="modal create-modal" role="dialog" aria-modal="true" aria-label="Create ticket">
+        <div class="modal-head">
+          <h2>Create ticket</h2>
+          <button class="ghost" id="closeModalBtn" aria-label="Close">✕</button>
+        </div>
+        <div class="meta-note req-note"><span class="req">*</span> Required field</div>
+
+        <div class="field">
+          <label for="f_series">Series <span class="req">*</span></label>
+          <select id="f_series">${SERIES.map(s=>`<option value="${esc(s)}" ${formSeries===s?'selected':''}>${esc(seriesLabel(s))}</option>`).join('')}</select>
+          <div class="meta-note" id="f_manufacturerNote">${SERIES_MANUFACTURER[formSeries] ? 'Manufacturer: ' + esc(SERIES_MANUFACTURER[formSeries]) : ''}</div>
+        </div>
+        <div class="field"><label>Type <span class="req">*</span></label>${typeRadioHtml(null)}</div>
+        <div class="field">
+          <label for="f_title">Title <span class="req">*</span></label>
+          <input type="text" id="f_title" placeholder="Short, clear summary" autocomplete="off">
+        </div>
+        <div class="field" id="modelsWrap"></div>
+        <div class="field">
+          <label for="f_desc">Description</label>
+          <textarea id="f_desc" placeholder="What's the issue — expected vs. actual behavior…"></textarea>
+        </div>
+        <div class="field">
+          <label for="f_steps">Steps to reproduce</label>
+          <textarea id="f_steps" placeholder="1. Open …&#10;2. Tap …&#10;3. …"></textarea>
+        </div>
+        <div class="field row2">
+          <div>
+            <label for="f_priority">Priority</label>
+            <select id="f_priority">${PRIORITIES.map(p=>`<option ${p==='Low'?'selected':''}>${p}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label for="f_category">Category <span class="req">*</span></label>
+            <select id="f_category">${CATEGORIES.map(c=>`<option>${c}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Attachments</label>
+          <div class="attach-list" id="attachList"></div>
+          <input type="file" id="attachFileInput" multiple style="display:none;">
+          <button id="attachUploadBtn" class="attach-big-btn" type="button"><span class="attach-big-btn-icon">＋</span><span>Add attachments</span></button>
+          <div class="meta-note attach-upload-hint" id="attachUploadStatus">Photos, screenshots, or files — up to 8MB each</div>
+        </div>
+
+        <details class="more-fields">
+          <summary>More fields</summary>
+          <div class="field">
+            <label for="f_status">Status</label>
+            <select id="f_status">${STATUSES.map(s=>`<option>${s.id}</option>`).join('')}</select>
+          </div>
+          <div class="field row2">
+            <div><label for="f_assignee">Assignee</label><input type="text" id="f_assignee" list="namesList" placeholder="Name"></div>
+            <div><label for="f_reporter">Reporter</label><input type="text" id="f_reporter" list="namesList" value="${esc(currentUser||'')}" placeholder="Name"></div>
+          </div>
+          <div class="field"><label for="f_fw">FW version reported</label><input type="text" id="f_fw" placeholder="e.g. 2.14.3"></div>
+          <div class="field"><label for="f_release">Fix targeted for firmware release</label><select id="f_release">${buildReleaseOptions(formSeries, '')}</select></div>
+          <div class="field"><label for="f_zendesk">Zendesk reference</label><input type="text" id="f_zendesk" placeholder="e.g. #12345 or full URL"></div>
+        </details>
+
+        <div class="modal-foot create-foot">
+          <label class="create-another"><input type="checkbox" id="createAnother"> Create another</label>
+          <div style="display:flex; gap:8px;">
+            <button class="ghost" id="cancelBtn" type="button">Cancel</button>
+            <button class="primary" id="saveBtn" type="button">Create</button>
+          </div>
+        </div>
+      </div>`);
+    requestAnimationFrame(() => requestAnimationFrame(() => positionRadioIndicator(overlay)));
+    wireTypeRadios(overlay);
+
+    const modelsBox = () => $('#modelsWrap');
+    renderModelsField(modelsBox(), formSeries, '', true, null);
     $('#f_series').addEventListener('change', () => {
       const s = $('#f_series').value;
-      renderModelsField(s, $('#f_product').value, !t);
+      renderModelsField(modelsBox(), s, '', true, null);
       $('#f_release').innerHTML = buildReleaseOptions(s, '');
       $('#f_manufacturerNote').textContent = SERIES_MANUFACTURER[s] ? 'Manufacturer: ' + SERIES_MANUFACTURER[s] : '';
     });
-    if (t){
-      $('#f_status').addEventListener('change', () => {
-        const newStatus = $('#f_status').value;
-        const st = STATUSES.find(s=>s.id===newStatus);
-        const pill = $('#headerStatusPill');
-        if (pill && st){ pill.textContent = st.id; pill.style.background = st.color; }
-        inlineSaveTicketField(t, 'status', newStatus, (before, after) => `Status changed from "${before}" to "${after}"`);
-      });
-      $('#f_title').addEventListener('blur', () => {
-        const newTitle = $('#f_title').value.trim();
-        if (!newTitle){ $('#f_title').value = t.title; shakeField($('#f_title')); toast('Title can\u2019t be empty', 'error'); return; }
-        inlineSaveTicketField(t, 'title', newTitle, null);
-      });
-      $('#f_assignee').addEventListener('blur', () => {
-        inlineSaveTicketField(t, 'assignee', $('#f_assignee').value.trim(),
-          (before, after) => `Assignee changed from "${before || 'unassigned'}" to "${after || 'unassigned'}"`);
-      });
-    }
-
     renderAttachList();
     $('#attachUploadBtn').addEventListener('click', () => $('#attachFileInput').click());
-    $('#attachFileInput').addEventListener('change', (e) => handleFileUploads(Array.from(e.target.files)));
+    $('#attachFileInput').addEventListener('change', e => handleFileUploads(Array.from(e.target.files)));
     $('#closeModalBtn').addEventListener('click', closeModal);
     $('#cancelBtn').addEventListener('click', closeModal);
     $('#saveBtn').addEventListener('click', saveTicket);
-    if (t) $('#deleteBtn').addEventListener('click', () => deleteTicket(t.id));
-    if (t){
-      renderActivityFeed(t.id);
-      $('#c_addBtn').addEventListener('click', () => addComment(t.id));
-      $('#commentSwitchUser').addEventListener('click', () => switchUser(t.id));
-      $('#copyLinkBtn').addEventListener('click', () => copyTicketLink(t.id));
-      history.replaceState(null, '', '#' + encodeURIComponent(t.id));
-    }
-    overlay.addEventListener('mousedown', e => { if (e.target === overlay) closeModal(); });
+    $('#f_title').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); saveTicket(); } });
+    setTimeout(() => { const f = $('#f_title'); if (f && !('ontouchstart' in window)) f.focus(); }, 60);
   }
 
-  // ---- Models (screen sizes) checkbox group ----
-  // The visible checkboxes + "other" text are compiled into the single hidden #f_product value,
-  // so the save logic is untouched. Anything in the old free-text value that isn't a known model
-  // is kept in the "Other" box instead of being dropped.
+  // ---------- VIEW (existing ticket) ----------
+  function openTicketView(id){
+    const t = data.tickets.find(x=>x.id===id);
+    if (!t){ return; }
+    editingId = id;
+    draftAttachments = JSON.parse(JSON.stringify(t.attachments||[]));
+    populateNameDatalists();
+    const st = STATUSES.find(s=>s.id===t.status) || STATUSES[0];
+    const sel = (opts, cur) => opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('');
+    const overlay = overlayShow(`
+      <div class="modal wide issue-view" role="dialog" aria-modal="true" aria-label="${esc(t.id)}">
+        <div class="iv-top">
+          <div class="iv-crumb"><span>${esc(seriesLabel(t.series))}</span><span class="iv-sep">/</span><strong>${esc(t.id)}</strong></div>
+          <div class="iv-top-actions">
+            <button class="ghost small" id="copyLinkBtn" title="Copy a link that opens this ticket directly">🔗 Copy link</button>
+            <button class="ghost" id="closeModalBtn" aria-label="Close">✕</button>
+          </div>
+        </div>
+        <div class="iv-grid">
+          <div class="iv-main">
+            <textarea id="f_title" class="iv-title" rows="1" aria-label="Title">${esc(t.title)}</textarea>
+            <div class="iv-statusrow">
+              <select id="f_status" class="iv-status" aria-label="Status" style="background:${st.color}">${STATUSES.map(s=>`<option ${s.id===t.status?'selected':''}>${s.id}</option>`).join('')}</select>
+              <span class="iv-hint">Changes save automatically</span>
+            </div>
+
+            <div class="iv-section" id="secDesc">
+              <h3>Description</h3>
+              <div class="iv-text" id="secDescView" tabindex="0" role="button" aria-label="Edit description"></div>
+              <textarea id="secDescTa" class="iv-ta" hidden></textarea>
+            </div>
+            <div class="iv-section" id="secSteps">
+              <h3>Steps to reproduce</h3>
+              <div class="iv-text" id="secStepsView" tabindex="0" role="button" aria-label="Edit steps to reproduce"></div>
+              <textarea id="secStepsTa" class="iv-ta" hidden></textarea>
+            </div>
+
+            <div class="iv-section">
+              <h3>Attachments</h3>
+              <div class="attach-list" id="attachList"></div>
+              <input type="file" id="attachFileInput" multiple style="display:none;">
+              <button id="attachUploadBtn" class="attach-big-btn" type="button"><span class="attach-big-btn-icon">＋</span><span>Add attachments</span></button>
+              <div class="meta-note attach-upload-hint" id="attachUploadStatus">Photos, screenshots, or files — up to 8MB each</div>
+            </div>
+
+            <div class="iv-section">
+              <h3>Comments and activity</h3>
+              <div class="comment-input-block">
+                <div class="name-row commenting-as">Commenting as <strong>${esc(currentUser||'you')}</strong><span class="switch-link" id="commentSwitchUser">not you?</span></div>
+                <textarea id="c_text" placeholder="Write a comment… (Ctrl+Enter to post)"></textarea>
+                <div class="comment-submit-row"><button id="c_addBtn" class="primary small" type="button">Comment</button></div>
+              </div>
+              <div class="activity-feed" id="activityFeed"></div>
+            </div>
+          </div>
+
+          <aside class="iv-side">
+            <div class="iv-card">
+              <h3>Details</h3>
+              <div class="iv-row"><label for="f_assignee">Assignee</label><input type="text" id="f_assignee" list="namesList" value="${esc(t.assignee||'')}" placeholder="Unassigned"></div>
+              <div class="iv-row"><label for="f_reporter">Reporter</label><input type="text" id="f_reporter" list="namesList" value="${esc(t.reporter||'')}" placeholder="Name"></div>
+              <div class="iv-row"><label for="f_priority">Priority</label><select id="f_priority">${sel(PRIORITIES, t.priority)}</select></div>
+              <div class="iv-row"><label for="f_category">Category</label><select id="f_category">${sel(CATEGORIES, t.category)}</select></div>
+              <div class="iv-row"><label for="f_type">Type</label><select id="f_type">${sel(['Bug','Firmware request'], t.type)}</select></div>
+              <div class="iv-row"><label for="f_series">Series</label><select id="f_series">${SERIES.map(s=>`<option value="${esc(s)}" ${t.series===s?'selected':''}>${esc(seriesLabel(s))}</option>`).join('')}</select>
+                <div class="meta-note" id="f_manufacturerNote">${SERIES_MANUFACTURER[t.series] ? 'Manufacturer: ' + esc(SERIES_MANUFACTURER[t.series]) : ''}</div></div>
+              <div class="iv-row" id="modelsWrap"></div>
+              <div class="iv-row"><label for="f_fw">FW version reported</label><input type="text" id="f_fw" value="${esc(t.fwVersion||'')}" placeholder="e.g. 2.14.3"></div>
+              <div class="iv-row"><label for="f_release">Fix targeted for release</label><select id="f_release">${buildReleaseOptions(t.series, t.release)}</select></div>
+              <div class="iv-row"><label for="f_zendesk">Zendesk reference</label><input type="text" id="f_zendesk" value="${esc(t.zendeskRef||'')}" placeholder="#12345 or URL"></div>
+            </div>
+            <div class="iv-meta">Created ${fmtDate(t.createdAt)}<br>Updated <span id="ivUpdated">${fmtDate(t.updatedAt)}</span></div>
+            <button class="danger ghost small" id="deleteBtn" type="button">Delete ticket</button>
+          </aside>
+        </div>
+      </div>`);
+
+    // plain-text fields: blur/change commits
+    const bindText = (sel, field, logFn) => {
+      const elx = $(sel);
+      elx.addEventListener('change', () => commitTicketField(t, field, elx.value.trim(), logFn));
+      elx.addEventListener('keydown', e => { if (e.key === 'Enter') elx.blur(); });
+    };
+    bindText('#f_assignee', 'assignee', logAssignee);
+    bindText('#f_reporter', 'reporter');
+    bindText('#f_fw', 'fwVersion');
+    bindText('#f_zendesk', 'zendeskRef');
+    $('#f_title').addEventListener('change', () => {
+      const v = $('#f_title').value.trim();
+      if (!v){ $('#f_title').value = t.title; shakeField($('#f_title')); toast('Title can’t be empty', 'error'); return; }
+      commitTicketField(t, 'title', v);
+    });
+    const fitTitle = () => { const x = $('#f_title'); x.style.height = 'auto'; x.style.height = x.scrollHeight + 'px'; };
+    $('#f_title').addEventListener('input', fitTitle);
+    requestAnimationFrame(() => requestAnimationFrame(fitTitle));
+    $('#f_title').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); $('#f_title').blur(); } });
+    ['priority','category','type'].forEach(f => {
+      $('#f_'+f).addEventListener('change', () => commitTicketField(t, f, $('#f_'+f).value));
+    });
+    $('#f_status').addEventListener('change', () => {
+      const s = STATUSES.find(x=>x.id===$('#f_status').value);
+      if (s) $('#f_status').style.background = s.color;
+      commitTicketField(t, 'status', $('#f_status').value, logStatus);
+    });
+    $('#f_release').addEventListener('change', () => commitTicketField(t, 'release', $('#f_release').value, logRelease));
+    $('#f_series').addEventListener('change', async () => {
+      const s = $('#f_series').value;
+      if (s === t.series) return;
+      t.series = s; t.release = '';
+      t.product = (SERIES_MODELS[s]||[]).length ? ALL_MODELS_TOKEN : '';
+      t.updatedAt = new Date().toISOString();
+      persist(); toast('Saved', 'success');
+      $('#f_release').innerHTML = buildReleaseOptions(s, '');
+      $('#f_manufacturerNote').textContent = SERIES_MANUFACTURER[s] ? 'Manufacturer: ' + SERIES_MANUFACTURER[s] : '';
+      const crumb = overlay.querySelector('.iv-crumb span'); if (crumb) crumb.textContent = seriesLabel(s);
+      const u = $('#ivUpdated'); if (u) u.textContent = fmtDate(t.updatedAt);
+      renderModelsField($('#modelsWrap'), s, t.product, false, v => commitTicketField(t, 'product', v));
+      refreshBehindModal();
+    });
+    renderModelsField($('#modelsWrap'), t.series, t.product, false, v => commitTicketField(t, 'product', v));
+
+    // click-to-edit long text
+    wireInlineText('secDesc', 'secDescView', 'secDescTa', t, 'description', 'Add a description…');
+    wireInlineText('secSteps', 'secStepsView', 'secStepsTa', t, 'stepsToReproduce', 'Add steps to reproduce…');
+
+    // attachments autosave
+    attachCommitHook = () => {
+      t.attachments = JSON.parse(JSON.stringify(draftAttachments));
+      t.updatedAt = new Date().toISOString();
+      persist(); toast('Saved', 'success');
+      const u = $('#ivUpdated'); if (u) u.textContent = fmtDate(t.updatedAt);
+      refreshBehindModal();
+    };
+    renderAttachList();
+    $('#attachUploadBtn').addEventListener('click', () => $('#attachFileInput').click());
+    $('#attachFileInput').addEventListener('change', e => handleFileUploads(Array.from(e.target.files)));
+
+    renderActivityFeed(t.id);
+    $('#c_addBtn').addEventListener('click', () => addComment(t.id));
+    $('#c_text').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); addComment(t.id); } });
+    $('#commentSwitchUser').addEventListener('click', () => switchUser(t.id));
+    $('#copyLinkBtn').addEventListener('click', () => copyTicketLink(t.id));
+    $('#closeModalBtn').addEventListener('click', closeModal);
+    $('#deleteBtn').addEventListener('click', () => deleteTicket(t.id));
+    history.replaceState(null, '', '#' + encodeURIComponent(t.id));
+  }
+
+  // Description / Steps: shows text; click turns it into an editor; blur saves, Esc cancels.
+  function wireInlineText(secId, viewId, taId, t, field, emptyText){
+    const view = $('#'+viewId), ta = $('#'+taId);
+    const paint = () => {
+      const v = t[field] || '';
+      view.textContent = v || emptyText;
+      view.classList.toggle('empty', !v);
+    };
+    const open = () => {
+      ta.value = t[field] || '';
+      view.hidden = true; ta.hidden = false;
+      ta.style.height = 'auto'; ta.style.height = Math.max(90, ta.scrollHeight + 2) + 'px';
+      ta.focus();
+    };
+    let cancelled = false;
+    const close = () => { ta.hidden = true; view.hidden = false; paint(); };
+    // mousedown (not click): when another editor is open its blur reflows the page before a click would land
+    view.addEventListener('mousedown', e => { e.preventDefault(); open(); });
+    view.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
+    ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.max(90, ta.scrollHeight + 2) + 'px'; });
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Escape'){ e.stopPropagation(); cancelled = true; ta.blur(); }
+      else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); ta.blur(); }
+    });
+    ta.addEventListener('blur', () => {
+      const v = ta.value.trim();
+      const skip = cancelled; cancelled = false;
+      if (!skip) commitTicketField(t, field, v);   // runs synchronously up to persist()
+      close();                                      // close at once so layout doesn't shift under a click
+    });
+    paint();
+  }
+
+  // ---- Models dropdown ----
+  // Multi-select dropdown. The result is compiled to a single string stored in the existing
+  // 'product' field ("All models" when everything is ticked) — no Sheet/Apps Script change.
   function parseProductTokens(str){
     return String(str||'').split(',').map(x=>x.trim()).filter(Boolean);
   }
-  function renderModelsField(series, productStr, isNew){
-    const box = $('#modelsField'); if (!box) return;
+  function summarizeModels(catalog, checked){
+    if (!checked.size) return 'Select models…';
+    if (checked.size === catalog.length) return 'All models (' + catalog.length + ')';
+    const arr = catalog.filter(m => checked.has(m));
+    return arr.length <= 3 ? arr.join(', ') : arr.slice(0,2).join(', ') + ' +' + (arr.length-2) + ' more';
+  }
+  // box: container element. onCommit(value) is called (view mode) when the dropdown closes with a changed value.
+  function renderModelsField(box, series, productStr, isNew, onCommit){
+    if (modelsCtl){ modelsCtl = null; }
+    if (!box) return;
     const catalog = SERIES_MODELS[series] || [];
+    if (!catalog.length){ box.innerHTML = '<input type="hidden" id="f_product" value="">'; box.hidden = true; return; }
+    box.hidden = false;
     const tokens = parseProductTokens(productStr);
-    let checked = new Set();
-    let others = [];
-    const all = tokens.some(t => t.toLowerCase() === ALL_MODELS_TOKEN.toLowerCase());
+    const isAll = tokens.some(x => x.toLowerCase() === ALL_MODELS_TOKEN.toLowerCase());
+    let checked = new Set(); const legacy = [];
     tokens.forEach(tk => {
       if (tk.toLowerCase() === ALL_MODELS_TOKEN.toLowerCase()) return;
       const hit = catalog.find(m => m.toLowerCase() === tk.toLowerCase());
-      if (hit) checked.add(hit); else others.push(tk);
+      if (hit) checked.add(hit); else legacy.push(tk);   // unknown old values are kept, just not shown
     });
-    if (catalog.length && (all || (isNew && tokens.length === 0))) checked = new Set(catalog);
-
-    if (!catalog.length){
-      box.innerHTML = `
-        <label for="f_productOther">Product / variant (optional)</label>
-        <input type="text" id="f_productOther" value="${esc(others.join(', '))}" placeholder="e.g. Navigator RK module">`;
-    } else {
-      box.innerHTML = `
-        <div class="model-head">
-          <label id="modelsLabel">Models affected <span class="req" title="Required">*</span></label>
-          <span class="model-tools">
-            <button type="button" class="link-btn" id="modelsAll">Select all</button>
-            <button type="button" class="link-btn" id="modelsNone">Clear</button>
-          </span>
-        </div>
-        <div class="model-grid" id="modelGrid" role="group" aria-labelledby="modelsLabel">
-          ${catalog.map(m => `<label class="model-chip${checked.has(m)?' on':''}"><input type="checkbox" value="${esc(m)}" ${checked.has(m)?'checked':''}><span>${esc(m)}</span></label>`).join('')}
-        </div>
-        <input type="text" id="f_productOther" class="model-other" value="${esc(others.join(', '))}" placeholder="Other / not listed (optional)" aria-label="Other model, not listed">`;
-    }
-    const sync = () => {
-      const picked = catalog.filter(m => { const cb = box.querySelector(`input[type=checkbox][value="${m}"]`); return cb && cb.checked; });
-      const parts = (catalog.length && picked.length === catalog.length) ? [ALL_MODELS_TOKEN] : picked.slice();
-      parseProductTokens($('#f_productOther').value).forEach(o => parts.push(o));
-      $('#f_product').value = parts.join(', ');
-      box.querySelectorAll('.model-chip').forEach(c => c.classList.toggle('on', c.querySelector('input').checked));
+    if (isAll || (isNew && tokens.length === 0)) checked = new Set(catalog);
+    const compile = () => {
+      const parts = (checked.size === catalog.length) ? [ALL_MODELS_TOKEN] : catalog.filter(m => checked.has(m));
+      return parts.concat(legacy).join(', ');
     };
-    box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', sync));
-    $('#f_productOther').addEventListener('input', sync);
-    const setAll = (v) => { box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = v); sync(); };
-    const a = $('#modelsAll'); if (a) a.addEventListener('click', () => setAll(true));
-    const n = $('#modelsNone'); if (n) n.addEventListener('click', () => setAll(false));
-    sync();
+    box.innerHTML = `
+      <label id="modelsLabel">Models affected${isNew ? ' <span class="req">*</span>' : ''}</label>
+      <div class="msel">
+        <button type="button" class="msel-trigger" id="modelsTrigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="modelsLabel"><span class="msel-text"></span><span class="msel-caret">▾</span></button>
+        <div class="msel-panel" id="modelsPanel" hidden>
+          <div class="msel-tools"><button type="button" class="link-btn" id="modelsAll">Select all</button><button type="button" class="link-btn" id="modelsNone">Clear</button></div>
+          ${catalog.map(m => `<label class="msel-opt"><input type="checkbox" value="${esc(m)}" ${checked.has(m)?'checked':''}><span>${esc(m)}</span></label>`).join('')}
+        </div>
+      </div>
+      <input type="hidden" id="f_product" value="${esc(compile())}">`;
+    const trigger = $('#modelsTrigger'), panel = $('#modelsPanel'), hidden = $('#f_product');
+    let committed = compile();
+    const paint = () => { trigger.querySelector('.msel-text').textContent = summarizeModels(catalog, checked); hidden.value = compile(); };
+    const sync = () => {
+      checked = new Set(catalog.filter(m => { const cb = panel.querySelector(`input[value="${m}"]`); return cb && cb.checked; }));
+      paint();
+    };
+    const isOpen = () => !panel.hidden;
+    const open = () => { panel.hidden = false; trigger.setAttribute('aria-expanded','true'); };
+    const close = () => {
+      if (panel.hidden) return;
+      panel.hidden = true; trigger.setAttribute('aria-expanded','false');
+      const now = compile();
+      if (onCommit && now !== committed){ committed = now; onCommit(now); }
+    };
+    trigger.addEventListener('click', () => isOpen() ? close() : open());
+    panel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', sync));
+    $('#modelsAll').addEventListener('click', () => { panel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true); sync(); });
+    $('#modelsNone').addEventListener('click', () => { panel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false); sync(); });
+    const outside = e => { if (!box.isConnected){ document.removeEventListener('mousedown', outside); return; } if (isOpen() && !box.querySelector('.msel').contains(e.target)) close(); };
+    document.addEventListener('mousedown', outside);
+    modelsCtl = { close, isOpen };
+    paint();
   }
 
   function copyTicketLink(ticketId){
@@ -3084,6 +3305,8 @@
     persist(); // fire-and-forget — never block the UI on the network; failures still toast
     populateNameDatalists();
     renderActivityFeed(ticketId);
+    const u = $('#ivUpdated'); if (u) u.textContent = fmtDate(t.updatedAt);
+    render();
   }
 
   function renderAttachList(){
@@ -3092,7 +3315,7 @@
     draftAttachments.forEach((a, i) => {
       const row = el('div','attach-row');
       row.innerHTML = `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.name || a.url)}</a><span class="x" title="Remove">✕</span>`;
-      row.querySelector('.x').addEventListener('click', () => { draftAttachments.splice(i,1); renderAttachList(); });
+      row.querySelector('.x').addEventListener('click', () => { draftAttachments.splice(i,1); renderAttachList(); if (attachCommitHook) attachCommitHook(); });
       wrap.appendChild(row);
     });
   }
@@ -3125,12 +3348,15 @@
       }
     }
     statusEl.textContent = 'Photos, screenshots, or files — up to 8MB each';
+    if (uploaded && attachCommitHook) attachCommitHook();
     if (uploaded) toast(uploaded === 1 ? 'Uploaded 1 file' : 'Uploaded ' + uploaded + ' files');
     btn.disabled = false;
     if (fileInput) fileInput.value = '';
   }
 
   function closeModal(){
+    if (modelsCtl && modelsCtl.isOpen()){ modelsCtl.close(); return; }
+    attachCommitHook = null; modelsCtl = null;
     closeOverlayEl($('#modalOverlay'));
     editingId = null;
     editingReleaseId = null;
@@ -3139,76 +3365,46 @@
 
   async function saveTicket(){
     const title = $('#f_title').value.trim();
-    if (!title){ $('#f_title').focus(); toast('Title is required'); shakeField($('#f_title')); return; }
+    if (!title){ $('#f_title').focus(); toast('Title is required', 'error'); shakeField($('#f_title')); return; }
     const type = document.querySelector('input[name="type"]:checked').value;
     const series = $('#f_series').value;
     const now = new Date().toISOString();
-    if (!editingId && (SERIES_MODELS[series]||[]).length && !$('#f_product').value.trim()){
-      const grid = $('#modelGrid'); if (grid) grid.scrollIntoView({block:'center'});
-      shakeField($('#modelsField')); toast('Select at least one model', 'error'); return;
+    if ((SERIES_MODELS[series]||[]).length && !$('#f_product').value.trim()){
+      const tr = $('#modelsTrigger'); if (tr) tr.scrollIntoView({block:'center'});
+      shakeField(tr); toast('Select at least one model', 'error'); return;
     }
-
-    if (editingId){
-      const t = data.tickets.find(x=>x.id===editingId);
-      const before = { status: t.status, assignee: t.assignee, release: t.release };
-      const newStatus = $('#f_status').value;
-      const newAssignee = $('#f_assignee').value.trim();
-      const newRelease = $('#f_release').value;
-
-      Object.assign(t, {
-        title, type, series,
-        description: $('#f_desc').value.trim(),
-        stepsToReproduce: $('#f_steps').value.trim(),
-        category: $('#f_category').value,
-        priority: $('#f_priority').value,
-        status: newStatus,
-        reporter: $('#f_reporter').value.trim(),
-        assignee: newAssignee,
-        product: $('#f_product').value.trim(),
-        fwVersion: $('#f_fw').value.trim(),
-        zendeskRef: $('#f_zendesk').value.trim(),
-        release: newRelease,
-        attachments: draftAttachments,
-        updatedAt: now,
-      });
-
-      if (before.status !== newStatus) logActivity(t, `Status changed from "${before.status}" to "${newStatus}"`);
-      if (before.assignee !== newAssignee) logActivity(t, `Assignee changed from "${before.assignee || 'unassigned'}" to "${newAssignee || 'unassigned'}"`);
-      if (before.release !== newRelease){
-        const oldV = before.release ? releaseVersionFor(before.release) : null;
-        const newV = newRelease ? releaseVersionFor(newRelease) : null;
-        logActivity(t, `Firmware release changed from ${oldV ? 'v'+oldV : 'backlog'} to ${newV ? 'v'+newV : 'backlog'}`);
-      }
-      toast('Ticket saved');
-    } else {
-      const newTicket = {
-        id: nextKey(series),
-        title, type, series,
-        description: $('#f_desc').value.trim(),
-        stepsToReproduce: $('#f_steps').value.trim(),
-        category: $('#f_category').value,
-        priority: $('#f_priority').value,
-        status: $('#f_status').value,
-        reporter: $('#f_reporter').value.trim(),
-        assignee: $('#f_assignee').value.trim(),
-        product: $('#f_product').value.trim(),
-        fwVersion: $('#f_fw').value.trim(),
-        zendeskRef: $('#f_zendesk').value.trim(),
-        release: $('#f_release').value,
-        attachments: draftAttachments,
-        comments: [],
-        activity: [],
-        createdAt: now, updatedAt: now,
-      };
-      data.tickets.push(newTicket);
-      toast('Ticket created: ' + newTicket.id);
-      if (series !== selectedSeries){ selectedSeries = series; }
-    }
+    const newTicket = {
+      id: nextKey(series),
+      title, type, series,
+      description: $('#f_desc').value.trim(),
+      stepsToReproduce: $('#f_steps').value.trim(),
+      category: $('#f_category').value,
+      priority: $('#f_priority').value,
+      status: $('#f_status').value,
+      reporter: $('#f_reporter').value.trim(),
+      assignee: $('#f_assignee').value.trim(),
+      product: $('#f_product').value.trim(),
+      fwVersion: $('#f_fw').value.trim(),
+      zendeskRef: $('#f_zendesk').value.trim(),
+      release: $('#f_release').value,
+      attachments: draftAttachments,
+      comments: [],
+      activity: [],
+      createdAt: now, updatedAt: now,
+    };
+    data.tickets.push(newTicket);
+    toast('Ticket created: ' + newTicket.id, 'success');
+    if (series !== selectedSeries){ selectedSeries = series; }
     persist(); // fire-and-forget — never block the UI on the network; failures still toast
+    const again = $('#createAnother') && $('#createAnother').checked;
     renderSidebar();
     populateAssigneeFilter();
-    closeModal();
     render();
+    if (again){
+      $('#f_title').value = ''; $('#f_desc').value = ''; $('#f_steps').value = '';
+      draftAttachments = []; renderAttachList();
+      $('#f_title').focus();
+    } else closeModal();
   }
 
   async function deleteTicket(id){
